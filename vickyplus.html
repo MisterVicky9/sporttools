@@ -109,7 +109,7 @@
     $('status').textContent=list.length+' '+(mode==='team'?'teams':(o.splitSeasons&&o.from!==o.to&&mode!=='pj'?'pitcher-seasons':'pitchers'))+(list.length>top.length?' (showing top '+top.length+')':'');
     $('more').classList.toggle('hidden', list.length<=top.length);
     $('viewing').textContent = mode==='pj' ? 'Projecting '+(SC.seasons[SC.seasons.length-1]+1)+' from '+SC.seasons[SC.seasons.length-1] : 'Currently viewing seasons between '+o.from+' and '+o.to;
-    $('foot').textContent=VPUI.inputsNote(CTX)+(mode==='team'?' Team rows combine the pitchers who fall inside the IP range (a pitcher\'s IP with that team'+(o.splitSeasons?' in that season':' across the seasons shown')+'); rates are IP-weighted averages and Vicky+ is IP-weighted.':'');
+    $('foot').textContent='';
   }
 
   VP.fetchData('vickyplus-data.json').then(function(data){

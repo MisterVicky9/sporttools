@@ -85,7 +85,7 @@ var VPUI = (function(){
   var PICKER_HTML='<div class="picker hidden" id="picker"><div class="top"><input type="search" id="pickQ" placeholder="Find a column…"><button id="pickStats" type="button">Add all stats</button><button id="pickClear" type="button">Clear</button><button id="pickReset" type="button">Reset</button></div><h4>Player info</h4><div class="grid" id="pickInfo"></div><h4>Stats</h4><div class="grid" id="pickStat"></div></div>';
   function inputsNote(ctx){
     var names=ctx.feats.map(function(f){return f.key;}).join(', ');
-    return 'Vicky+: 100 = league average, 20 points = 1 standard deviation within each season. Inputs: '+names+(ctx.full?'':' (add Z-Contact% and SwStr% to the export for the full six-input version)')+'.';
+    return 'Vicky+ is a composite of '+names+', weighted and scaled so 100 = league average (weighted by innings pitched) and 20 points = 1 standard deviation within each season.'+(ctx.full?'':' Add Z-Contact% and SwStr% to the export for the full six-input version.');
   }
   return {$:$, esc:esc, dataCol:dataCol, sortRows:sortRows, drawTable:drawTable, downloadCSV:downloadCSV, Picker:Picker, PICKER_HTML:PICKER_HTML, inputsNote:inputsNote};
 })();

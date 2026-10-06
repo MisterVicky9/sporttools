@@ -65,7 +65,7 @@
     VPUI.drawTable({el:$('tbl'),cols:cols,rows:rows,rank:false,rowClass:function(r){return r._k==='stint'?'stint':'total';}});
     chart(totals);
     var latest=SC.seasons[SC.seasons.length-1], P=VP.project(SC).rows.filter(function(r){return r.id===id;})[0];
-    $('foot').textContent=(P?'Projection for '+(latest+1)+': Vicky+ '+Math.round(P.PV)+', '+VP.project(SC).target+' '+(P.PT==null?'n/a':P.PT.toFixed(2))+' (reliability '+Math.round(P.rel*100)+'%). ':'')+VPUI.inputsNote(CTX);
+    $('foot').textContent=(P?'Projection for '+(latest+1)+': Vicky+ '+Math.round(P.PV)+', '+VP.project(SC).target+' '+(P.PT==null?'n/a':P.PT.toFixed(2))+' (reliability '+Math.round(P.rel*100)+'%).':'');
     $('status').textContent='';
   }
 

@@ -11,8 +11,8 @@ var VP = (function(){
   // Projection constants: K = IP shrink, b = runs/9 (or ERA) per shrunk z, rho = year-to-year carry.
   // "full" = all six inputs in the data file, "lite" = the four inputs that are available without Z-Contact%/SwStr%.
   var CONSTS = {
-    full:{K:10, b:0.5676, bERA:0.5871, rho:0.9134},
-    lite:{K:10, b:0.5585, bERA:0.5800, rho:0.9072}
+    full:{K:10, b:0.5701, bERA:0.5885, rho:0.9149},
+    lite:{K:10, b:0.5604, bERA:0.5810, rho:0.9090}
   };
   var REF_IP = 20;
 
@@ -118,7 +118,9 @@ var VP = (function(){
       });
       var comp=function(r){ var C=0; feats.forEach(function(f){ var v=r.f[f.key]; var z=(v===null||v===undefined)?0:(v*f.sign-zs[f.key].m)/zs[f.key].s; C+=z*f.w/wsum; }); return C; };
       var cv=refT.map(comp), cm=mean(cv), cs=sd(cv)||1;
-      var setV=function(r){ r.Cz=(comp(r)-cm)/cs; r.V=100+20*r.Cz; };
+      // 100 = IP-weighted league average (like wRC+ / FIP-): centre on the innings-weighted mean of every pitcher's season total
+      var mw=0, ww=0; T.forEach(function(t){ mw+=((comp(t)-cm)/cs)*t.IPt; ww+=t.IPt; }); var mu=ww>0? mw/ww : 0;
+      var setV=function(r){ r.Cz=(comp(r)-cm)/cs-mu; r.V=100+20*r.Cz; };
       T.forEach(setV);
       S.forEach(setV);
     });
