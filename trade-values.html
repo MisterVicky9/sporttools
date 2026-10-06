@@ -75,13 +75,27 @@
   .settings-grid{ background:var(--blue-tint); }
   .player-name-input:focus{ border-bottom-color:var(--blue); }
   .result-box .headline{ color:var(--blue-dark); }
+  .switch-row{ display:flex; align-items:center; gap:10px; font-size:14px; font-weight:600; margin:0 0 12px; cursor:pointer; color:var(--blue-dark); }
+  .switch{ position:relative; width:42px; height:24px; flex:none; }
+  .switch input{ opacity:0; width:0; height:0; position:absolute; }
+  .slider{ position:absolute; inset:0; background:#b5bcc9; border-radius:24px; transition:.15s; }
+  .slider::before{ content:""; position:absolute; width:18px; height:18px; left:3px; top:3px; background:#fff; border-radius:50%; transition:.15s; }
+  .switch input:checked + .slider{ background:var(--green); }
+  .switch input:checked + .slider::before{ transform:translateX(18px); }
+  .fs-row{ display:flex; flex-wrap:wrap; align-items:center; gap:8px 14px; margin:10px 0 2px; }
+  .fs-row select{ padding:6px 8px; border:1px solid #ccc; border-radius:6px; font-size:13px; }
+  .fs-row span{ display:inline-flex; align-items:center; gap:6px; }
+  .fs-row label{ font-size:12px; font-weight:600; color:#444; }
+  .fs-row input{ width:80px; padding:6px; border:1px solid #ccc; border-radius:6px; font-size:13px; }
+  table.data-table input::placeholder{ color:#8a9a9e; font-style:italic; }
 </style>
 </head>
 <body>
 
 <h2 class="pagetitle">Trade Value Calculator</h2>
 
-<button type="button" class="toggle-btn" id="advSettingsBtn" onclick="toggleSection('advSettingsPanel', this)" style="display:block; margin-bottom:16px;">▸ Advanced Settings (market rate & prospect value table)</button>
+<label class="switch-row"><span class="switch"><input type="checkbox" id="uncOn" onchange="calc()"><span class="slider"></span></span> Apply default uncertainty (discount future salary &amp; WAR)</label>
+<button type="button" class="toggle-btn" id="advSettingsBtn" onclick="toggleSection('advSettingsPanel', this)" style="display:block; margin-bottom:16px;">▸ Advanced Settings (market rate, uncertainty & prospect value table)</button>
 <div id="advSettingsPanel" style="display:none;">
 
   <div class="calc-card">
@@ -92,6 +106,20 @@
       <div><label>Tier 2 max WAR</label><input type="number" id="tier2Max" value="2" step="0.1" onchange="calc()"></div>
       <div><label>Tier 2 $M/WAR</label><input type="number" id="tier2Rate" value="10" step="0.5" onchange="calc()"></div>
       <div><label>Tier 3+ $M/WAR</label><input type="number" id="tier3Rate" value="12" step="0.5" onchange="calc()"></div>
+    </div>
+  </div>
+
+  <br>
+
+  <div class="calc-card">
+    <h3>Uncertainty Defaults</h3>
+    <div class="settings-grid">
+      <div><label>Salary discount / yr</label><input type="number" id="uncSalary" value="1.08" step="0.01" onchange="calc()"></div>
+      <div><label>WAR discount, yr 2</label><input type="number" id="uncW1" value="1.08" step="0.01" onchange="calc()"></div>
+      <div><label>WAR discount, yr 3</label><input type="number" id="uncW2" value="1.10" step="0.01" onchange="calc()"></div>
+      <div><label>WAR discount, yr 4+</label><input type="number" id="uncW3" value="1.12" step="0.01" onchange="calc()"></div>
+      <div><label>Yr 1 salary share left</label><input type="number" id="uncFrac" value="0.32" step="0.01" onchange="calc()"></div>
+      <div><label>Yr 1 $M/WAR (if &le;1 WAR)</label><input type="number" id="uncRate1" value="10" step="0.5" onchange="calc()"></div>
     </div>
   </div>
 
@@ -257,6 +285,9 @@ let entryTeam = {};       // entryId -> home team key (who is giving it up)
 let entryCounter = 0;
 let yearRows = {};        // entryId -> [] of year-row ids (player entries only)
 let yearCounters = {};    // entryId -> counter
+const DEFAULT_QO = 7000000;   // qualifying-offer value, discounted 8%/yr like the contract years
+const QO_DISCOUNT = 1.08;
+let qoAuto = {};          // year-row id -> true while its QO is still the automatic default
 
 function teamDisplayLabel(key){
   const el = document.getElementById('teamLabel_'+key);
@@ -367,11 +398,18 @@ function playerEntryHTML(teamKey, id, idx){
     ${entryHeadHTML(teamKey, id, idx, 'player')}
     <label class="section-label" style="margin:12px 0 4px;">Name</label>
     <input type="text" id="name_${id}" placeholder="Player name" class="player-name-input">
+    <div class="fs-row">
+      <select id="fsmode_${id}" onchange="fsModeChanged('${id}')">
+        <option value="part">First row = rest of season</option>
+        <option value="full">First row = full season</option>
+      </select>
+      <span id="fsbox_${id}"><label>Full-season WAR (current / projected)</label><input type="number" id="fswar_${id}" step="0.1" onchange="calc()"></span>
+    </div>
     <table class="data-table" id="yearsTable_${id}">
       <thead><tr><th>Year</th><th>Salary ($)</th><th>WAR</th><th>Value of WAR</th><th></th></tr></thead>
       <tbody id="yearsBody_${id}"></tbody>
     </table>
-    <button type="button" class="toggle-btn" onclick="addYear('${id}')" style="display:inline-block; margin-top:10px;">+ Add Year</button>
+    <button type="button" class="toggle-btn" onclick="addYear('${id}'); calc();" style="display:inline-block; margin-top:10px;">+ Add Year</button>
     <button type="button" class="toggle-btn" onclick="toggleSection('yearsAdvPanel_${id}', this)" style="display:inline-block; margin-top:10px;">▸ Advanced: Playoff / QO / Considerations</button>
     <div id="yearsAdvPanel_${id}" style="display:none; margin-top:10px;">
       <table class="data-table" id="yearsAdvTable_${id}">
@@ -499,7 +537,9 @@ function addYear(entryId){
 }
 function removeYear(entryId, yid){
   yearRows[entryId] = yearRows[entryId].filter(id => id !== yid);
+  delete qoAuto[yid];
   renderYearsTable(entryId);
+  calc();
 }
 
 function tierValueOf(war){
@@ -510,6 +550,12 @@ function tierValueOf(war){
   const tier2 = Math.min(Math.max(war - t1max, 0), Math.max(t2max - t1max, 0));
   const tier3 = Math.max(war - t2max, 0);
   return (tier1*t1rate + tier2*t2rate + tier3*t3rate) * 1000000;
+}
+
+function qoVal(yid, i, n, current){
+  if(qoAuto[yid] === undefined) qoAuto[yid] = true;
+  if(!qoAuto[yid]) return current;
+  return i === n-1 ? Math.round(DEFAULT_QO / Math.pow(QO_DISCOUNT, i)) : '';
 }
 
 function renderYearsTable(entryId){
@@ -536,27 +582,54 @@ function renderYearsTable(entryId){
       return `<tr>
         <td class="computed">Year ${i+1}</td>
         <td><input type="number" id="yr_playoff${yid}" value="${g('yr_playoff')}" step="100000" onchange="calc()"></td>
-        <td><input type="number" id="yr_qo${yid}" value="${g('yr_qo')}" step="100000" onchange="calc()"></td>
+        <td><input type="number" id="yr_qo${yid}" value="${qoVal(yid, i, rows.length, g('yr_qo'))}" step="100000" onchange="qoAuto['${yid}']=false; calc()"></td>
       </tr>`;
     }).join('');
   }
 }
 
+function fsModeChanged(id){
+  const full = document.getElementById('fsmode_'+id).value === 'full';
+  document.getElementById('fsbox_'+id).style.display = full ? 'none' : 'inline-flex';
+  calc();
+}
+
+function uncOn(){ const el = document.getElementById('uncOn'); return !!(el && el.checked); }
+
 function computePlayerEntry(entryId){
   const rows = yearRows[entryId] || [];
   if(rows.length === 0) return null;
   const considerations = val('considerations_'+entryId);
+  const fullSeason = ((document.getElementById('fsmode_'+entryId) || {}).value === 'full');
+  const baseWar = fullSeason ? val('yr_war'+rows[0]) : val('fswar_'+entryId);
 
   let totalSalary = 0, totalWAR = 0, totalValue = considerations;
   const yearBreakdown = [];
 
   rows.forEach((yid, i)=>{
     const label = (document.getElementById('yr_label'+yid) || {}).value || ('Year ' + (i+1));
-    const salary = val('yr_salary'+yid);
-    const war = val('yr_war'+yid);
+    let salary = val('yr_salary'+yid);
+    let war = val('yr_war'+yid);
+    const warEl = document.getElementById('yr_war'+yid);
+    const rateFor = (k)=> ((k === 1 ? val('uncW1') : k === 2 ? val('uncW2') : val('uncW3')) || 1);
+    if(warEl) warEl.placeholder = '';
+    let extrapolated = false;
+    if(i >= 1 && warEl && warEl.value === '' && baseWar > 0){
+      // no projection entered: extrapolate from the latest full-season WAR with uncertainty
+      war = baseWar / Math.pow(rateFor(i), i);
+      warEl.placeholder = war.toFixed(2);
+      extrapolated = true;
+    }
+    if(uncOn()){
+      if(i === 0){ if(!fullSeason) salary *= val('uncFrac'); }
+      else {
+        salary = salary / Math.pow(val('uncSalary') || 1, i);
+        if(!extrapolated) war = war / Math.pow(rateFor(i), i);
+      }
+    }
     const playoff = val('yr_playoff'+yid);
     const qo = val('yr_qo'+yid);
-    const warValue = tierValueOf(war);
+    const warValue = (uncOn() && !fullSeason && i === 0 && war <= 1) ? war * val('uncRate1') * 1000000 : tierValueOf(war);
     const yearValue = warValue + playoff + qo;
 
     const cEl = document.getElementById('yr_computed'+yid);
