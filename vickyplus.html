@@ -96,6 +96,7 @@
     });
   }
 
+  function selIdx(r){ var k=((r.id||'')+'|'+r.Name+'|'+(r.SeasonLabel||'')+'|'+(r.Team||'')); for(var i=0;i<sel.length;i++){ var q=sel[i]; if(((q.id||'')+'|'+q.Name+'|'+(q.SeasonLabel||'')+'|'+(q.Team||''))===k) return i; } return -1; }
   function updCard(){
     $('cardBtn').textContent='Build Stat Card ('+sel.length+'/6)'; $('cardBtn').disabled=!sel.length;
     document.querySelectorAll('#tbl td.sel input').forEach(function(b){ b.disabled=!b.checked && sel.length>=6; });
@@ -123,7 +124,7 @@
     var col=cols.filter(function(c){return c.k===sortKey;})[0];
     if(!col){ sortKey=mode==='pj'?'PV':'V'; sortDir='desc'; col=cols.filter(function(c){return c.k===sortKey;})[0]; }
     var list=VPUI.sortRows(rowsFor(o),col,sortDir); shownRows=list; var top=list.slice(0,limit);
-    VPUI.drawTable({el:$('tbl'), cols:cols, rows:top, sortKey:sortKey, sortDir:sortDir, rank:true, check:{on:function(r){return sel.indexOf(r)>=0;}, off:function(r){return sel.length>=6 && sel.indexOf(r)<0;}}, onSort:function(k){
+    VPUI.drawTable({el:$('tbl'), cols:cols, rows:top, sortKey:sortKey, sortDir:sortDir, rank:true, check:{on:function(r){return selIdx(r)>=0;}, off:function(r){return sel.length>=6 && selIdx(r)<0;}}, onSort:function(k){
       var c=cols.filter(function(x){return x.k===k;})[0];
       if(sortKey===k) sortDir=sortDir==='asc'?'desc':'asc'; else { sortKey=k; sortDir=(c.txt||c.lowBest)?'asc':'desc'; }
       render();
@@ -151,7 +152,7 @@
     $('cardBtn').addEventListener('click',buildCard);
     $('tbl').addEventListener('change',function(e){
       var i=e.target.getAttribute&&e.target.getAttribute('data-i'); if(i===null||i===undefined) return;
-      var r=shownRows[parseInt(i)], k=sel.indexOf(r);
+      var r=shownRows[parseInt(i)], k=selIdx(r);
       if(e.target.checked&&k<0&&sel.length<6) sel.push(r); else if(!e.target.checked&&k>=0) sel.splice(k,1);
       updCard();
     });

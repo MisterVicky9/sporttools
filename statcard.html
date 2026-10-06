@@ -148,8 +148,12 @@
   tbody td.col-c4{ color:var(--col4); }
   tbody td.col-c5{ color:var(--col5); }
   tbody td.col-c6{ color:var(--col6); }
-  thead td.col-c1, thead td.col-c2, thead td.col-c3,
-  thead td.col-c4, thead td.col-c5, thead td.col-c6{ color:#fff; }
+  thead td.col-c1{ background:var(--col1-bg,#0f0f0f); color:var(--col1-fg,#fff); border-bottom:6px solid var(--col1-accent,#0f0f0f); }
+  thead td.col-c2{ background:var(--col2-bg,#0f0f0f); color:var(--col2-fg,#fff); border-bottom:6px solid var(--col2-accent,#0f0f0f); }
+  thead td.col-c3{ background:var(--col3-bg,#0f0f0f); color:var(--col3-fg,#fff); border-bottom:6px solid var(--col3-accent,#0f0f0f); }
+  thead td.col-c4{ background:var(--col4-bg,#0f0f0f); color:var(--col4-fg,#fff); border-bottom:6px solid var(--col4-accent,#0f0f0f); }
+  thead td.col-c5{ background:var(--col5-bg,#0f0f0f); color:var(--col5-fg,#fff); border-bottom:6px solid var(--col5-accent,#0f0f0f); }
+  thead td.col-c6{ background:var(--col6-bg,#0f0f0f); color:var(--col6-fg,#fff); border-bottom:6px solid var(--col6-accent,#0f0f0f); }
 
   .col-controls{
     display:flex; align-items:center; justify-content:center; gap:8px; margin-top:6px;
@@ -423,6 +427,11 @@ const LEAGUE_TEAMS = {
     "Toronto Blue Jays": {primary:"#134A8E", accent:"#1D2D5C", light:"#E8291C"},
     "Washington Nationals": {primary:"#AB0003", accent:"#14225A", light:"#E3D4AD"}
   },
+  "MLB Leagues": {
+    "Major League Baseball": {primary:"#041E42", accent:"#BF0D3E", light:"#C9D8ED"},
+    "American League": {primary:"#C8102E", accent:"#0C2340", light:"#F5C6CD"},
+    "National League": {primary:"#002D72", accent:"#C8102E", light:"#C9D8ED"}
+  },
   "NFL": {
     "Arizona Cardinals": {primary:"#97233F", accent:"#000000", light:"#FFB612"},
     "Atlanta Falcons": {primary:"#A71930", accent:"#000000", light:"#A5ACAF"},
@@ -457,6 +466,11 @@ const LEAGUE_TEAMS = {
     "Tennessee Titans": {primary:"#0C2340", accent:"#4B92DB", light:"#C8102E"},
     "Washington Commanders": {primary:"#5A1414", accent:"#FFB612", light:"#FFB612"}
   },
+  "NFL Conferences": {
+    "National Football League": {primary:"#013369", accent:"#D50A0A", light:"#C9D8ED"},
+    "AFC": {primary:"#D50A0A", accent:"#013369", light:"#F3C0C0"},
+    "NFC": {primary:"#013369", accent:"#D50A0A", light:"#C9D8ED"}
+  },
   "NBA": {
     "Atlanta Hawks": {primary:"#E03A3E", accent:"#26282A", light:"#C1D32F"},
     "Boston Celtics": {primary:"#007A33", accent:"#000000", light:"#BA9653"},
@@ -488,6 +502,11 @@ const LEAGUE_TEAMS = {
     "Toronto Raptors": {primary:"#CE1141", accent:"#000000", light:"#A1A1A4"},
     "Utah Jazz": {primary:"#002B5C", accent:"#000000", light:"#F9A01B"},
     "Washington Wizards": {primary:"#002B5C", accent:"#000000", light:"#E31837"}
+  },
+  "NBA Conferences": {
+    "National Basketball Association": {primary:"#17408B", accent:"#C9082A", light:"#C9D8ED"},
+    "Eastern Conference": {primary:"#17408B", accent:"#C9082A", light:"#C9D8ED"},
+    "Western Conference": {primary:"#C9082A", accent:"#17408B", light:"#F5C6CD"}
   },
   "NCAA (FBS)": {
     "Boston College": {primary:"#98002E", accent:"#000000", light:"#BC9B6A"},
@@ -626,11 +645,24 @@ const LEAGUE_TEAMS = {
     "Notre Dame": {primary:"#0C2340", accent:"#000000", light:"#C99700"},
     "UConn": {primary:"#000E2F", accent:"#000000", light:"#E4002B"},
     "UMass": {primary:"#881C1C", accent:"#000000", light:"#881C1C"}
+  },
+  "NCAA Conferences": {
+    "SEC": {primary:"#004B8D", accent:"#A2AAAD", light:"#C9D8ED"},
+    "Big Ten": {primary:"#0088CE", accent:"#1A1A1A", light:"#C9E4F5"},
+    "Big 12": {primary:"#C8102E", accent:"#0B2D5E", light:"#F5C6CD"},
+    "ACC": {primary:"#013CA6", accent:"#A2AAAD", light:"#C9D8ED"},
+    "Pac-12": {primary:"#004B87", accent:"#C8102E", light:"#C9D8ED"},
+    "American (AAC)": {primary:"#0B3B6F", accent:"#C8102E", light:"#C9D8ED"},
+    "Mountain West": {primary:"#0C2340", accent:"#A2AAAD", light:"#C9D8ED"},
+    "Sun Belt": {primary:"#0F3057", accent:"#E87722", light:"#FBD7BA"},
+    "MAC": {primary:"#00693E", accent:"#FFC72C", light:"#FFE9A3"},
+    "Conference USA": {primary:"#002D72", accent:"#C8102E", light:"#C9D8ED"},
+    "FBS Independents": {primary:"#333333", accent:"#A2AAAD", light:"#E1E4E6"}
   }
 };
 
 // Flat lookup used everywhere else in the app
-const TEAMS = Object.assign({}, LEAGUE_TEAMS.MLB, LEAGUE_TEAMS.NFL, LEAGUE_TEAMS.NBA, LEAGUE_TEAMS["NCAA (FBS)"]);
+const TEAMS = Object.assign({}, ...Object.values(LEAGUE_TEAMS));
 
 const DEFAULT_ROWS = [
   ["Stat","0","0"]
@@ -722,6 +754,21 @@ function colTeamColor(name){
   return c;
 }
 
+// Full per-column team theme: header band in the team's primary color, accent underline, and matching value text.
+function setColTheme(n, teamName){
+  const root = document.documentElement.style, t = TEAMS[teamName];
+  ['bg','fg','accent'].forEach(k=> root.removeProperty('--col'+n+'-'+k));
+  if(!t) return;
+  const lum = c => { const v = parseInt(c.slice(1),16); return (0.299*(v>>16) + 0.587*((v>>8)&255) + 0.114*(v&255))/255; };
+  const dist = (a,b)=>{ const x=parseInt(a.slice(1),16), y=parseInt(b.slice(1),16); return Math.abs((x>>16)-(y>>16))+Math.abs(((x>>8)&255)-((y>>8)&255))+Math.abs((x&255)-(y&255)); };
+  const bg = t.primary;
+  let accent = t.accent;
+  if(dist(bg, accent) < 90) accent = lum(bg) > 0.5 ? '#111111' : '#FFFFFF';
+  root.setProperty('--col'+n+'-bg', bg);
+  root.setProperty('--col'+n+'-fg', lum(bg) > 0.6 ? '#111111' : '#FFFFFF');
+  root.setProperty('--col'+n+'-accent', accent);
+}
+
 function setColColor(n, value){
   document.documentElement.style.setProperty('--col'+n, value);
 }
@@ -765,9 +812,10 @@ function addColumn(){
   teamSel.onchange = ()=>{
     const c = colTeamColor(teamSel.value);
     if(c){ swatch.value = c; setColColor(n, c); }
+    setColTheme(n, teamSel.value);
     scheduleAutosave();
   };
-  swatch.oninput = ()=>{ setColColor(n, swatch.value); teamSel.value = ''; };
+  swatch.oninput = ()=>{ setColColor(n, swatch.value); };
   const removeBtn = document.createElement('button');
   removeBtn.className = 'col-remove';
   removeBtn.textContent = '×';
@@ -781,6 +829,7 @@ function addColumn(){
   th.appendChild(controls);
   headerRow.insertBefore(th, ctrlCell);
   setColColor(n, color);
+  setColTheme(n, '');
 
   // body cells
   const body = document.getElementById('statBody');
@@ -1472,6 +1521,7 @@ function restoreCard(state){
     const tsel = td.querySelector('select.col-team');
     if(tsel && colData.team && TEAMS[colData.team]){
       tsel.value = colData.team;
+      setColTheme(n, colData.team);
       const tc = colTeamColor(colData.team);
       if(tc && (!colData.color || colData.fromTeam)){ swatch.value = tc; setColColor(n, tc); }
     }
@@ -1756,8 +1806,7 @@ document.querySelectorAll('#headerRow td[class^="col-c"]').forEach(td=>{
   teamSel.title = 'Use a team\'s color for this column';
   teamSel.innerHTML = '<option value="">Team color\u2026</option>' + document.getElementById('teamSelect').innerHTML;
   teamSel.value = '';
-  teamSel.onchange = ()=>{ const c = colTeamColor(teamSel.value); if(c){ swatch.value = c; setColColor(n, c); } scheduleAutosave(); };
-  swatch.addEventListener('input', ()=>{ teamSel.value = ''; });
+  teamSel.onchange = ()=>{ const c = colTeamColor(teamSel.value); if(c){ swatch.value = c; setColColor(n, c); } setColTheme(n, teamSel.value); scheduleAutosave(); };
   controls.insertBefore(teamSel, swatch);
 });
 loadDefaultRows();

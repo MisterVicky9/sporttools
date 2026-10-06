@@ -135,6 +135,7 @@
     else if(o.from!==o.to) c.push({k:'Season',label:'Seasons',txt:true,get:function(r){return r.SeasonLabel;}});
     return c.concat(PK.cols(mode==='team'?'Team':null));
   }
+  function selIdx(r){ var k=(r.id+'|'+r.SeasonLabel+'|'+r.Team); for(var i=0;i<sel.length;i++){ var q=sel[i]; if((q.id+'|'+q.SeasonLabel+'|'+q.Team)===k) return i; } return -1; }
   function updCard(){
     $('cardBtn').textContent='Build Stat Card ('+sel.length+'/6)'; $('cardBtn').disabled=!sel.length;
     document.querySelectorAll('#tbl td.sel input').forEach(function(b){ b.disabled=!b.checked && sel.length>=6; });
@@ -158,7 +159,7 @@
     if(!col){ sortKey=(cols.some(function(c){return c.k==='c:wRC+';})?'c:wRC+':(cols.some(function(c){return c.k==='c:WAR';})?'c:WAR':'Name')); sortDir=sortKey==='Name'?'asc':'desc'; col=cols.filter(function(c){return c.k===sortKey;})[0]; }
     var list=VPUI.sortRows(rowsFor(o),col,sortDir); shownRows=list; var top=list.slice(0,limit);
     VPUI.drawTable({el:$('tbl'),cols:cols,rows:top,sortKey:sortKey,sortDir:sortDir,rank:true,
-      check:{on:function(r){return sel.indexOf(r)>=0;}, off:function(r){return sel.length>=6 && sel.indexOf(r)<0;}},
+      check:{on:function(r){return selIdx(r)>=0;}, off:function(r){return sel.length>=6 && selIdx(r)<0;}},
       onSort:function(k){ var c=cols.filter(function(x){return x.k===k;})[0];
         if(sortKey===k) sortDir=sortDir==='asc'?'desc':'asc'; else { sortKey=k; sortDir=c.txt?'asc':'desc'; } render(); }});
     $('status').className='status';
@@ -182,7 +183,7 @@
     $('single').innerHTML='<option value="">Select</option>'+opt(ys); $('single').value=String(ys[0]);
     $('from').innerHTML=opt(seasons); $('to').innerHTML=opt(ys); $('from').value=String(seasons[0]); $('to').value=String(ys[0]);
     ['team','pos','splitSeasons','splitTeams','single','from','to','minPA','maxPA','q'].forEach(function(id){
-      $(id).addEventListener('input',function(){ if(id==='from'||id==='to') $('single').value=''; limit=250; sel=[]; render(); });
+      $(id).addEventListener('input',function(){ if(id==='from'||id==='to') $('single').value=''; limit=250; render(); });
     });
     document.querySelectorAll('#modes button').forEach(function(b){ b.addEventListener('click',function(){ setMode(b.getAttribute('data-mode')); }); });
     $('more').addEventListener('click',function(){ limit=1e9; render(); });
@@ -190,7 +191,7 @@
     $('cardBtn').addEventListener('click',buildCard);
     $('tbl').addEventListener('change',function(e){
       var i=e.target.getAttribute&&e.target.getAttribute('data-i'); if(i===null||i===undefined) return;
-      var r=shownRows[parseInt(i)], k=sel.indexOf(r);
+      var r=shownRows[parseInt(i)], k=selIdx(r);
       if(e.target.checked&&k<0&&sel.length<6) sel.push(r); else if(!e.target.checked&&k>=0) sel.splice(k,1);
       updCard();
     });
