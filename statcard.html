@@ -127,7 +127,10 @@
   }
   table{
     width:100%; border-collapse:collapse;
+    table-layout:fixed;            /* every stat column gets the same width */
   }
+  thead td.stat-col, tbody td.label-cell{ width:128px; }
+  thead td{ overflow-wrap:anywhere; }
   thead td{
     background:#0f0f0f; color:#fff; font-weight:800; text-align:center;
     padding:16px 6px; font-size:16px; position:relative;
@@ -329,7 +332,32 @@
     </div>
 
     <h3 style="margin-top:20px;">Export</h3>
-    <button class="export" onclick="exportPNG()">Download PNG</button>
+    <label for="exportRatio">Aspect ratio</label>
+    <select id="exportRatio" onchange="document.getElementById('exportBgRow').style.display = this.value==='auto' ? 'none' : 'block'; document.getElementById('exportCustomRow').style.display = this.value==='custom' ? 'flex' : 'none';">
+      <option value="auto">Original (card size)</option>
+      <option value="1">1:1 Square</option>
+      <option value="0.8">4:5 Portrait</option>
+      <option value="0.5625">9:16 Story / Reel</option>
+      <option value="1.7778">16:9 Widescreen</option>
+      <option value="1.3333">4:3</option>
+      <option value="1.5">3:2</option>
+      <option value="2">2:1</option>
+      <option value="custom">Custom…</option>
+    </select>
+    <div id="exportCustomRow" style="display:none; align-items:center; gap:6px; margin-top:6px;">
+      <input type="number" id="exportRatioW" value="3" min="1" step="any" style="width:70px;" aria-label="Ratio width"> :
+      <input type="number" id="exportRatioH" value="2" min="1" step="any" style="width:70px;" aria-label="Ratio height">
+    </div>
+    <div id="exportBgRow" style="display:none;">
+      <label for="exportBg">Fill around the card</label>
+      <select id="exportBg">
+        <option value="team">Team color</option>
+        <option value="dark">Dark</option>
+        <option value="white">White</option>
+        <option value="clear">Transparent</option>
+      </select>
+    </div>
+    <button class="export" onclick="exportPNG()" style="margin-top:12px;">Download PNG</button>
     <div class="hint">Exports exactly what's shown on the card — controls, buttons, and swatches are excluded automatically.</div>
   </div>
 
@@ -1340,6 +1368,33 @@ function applyCrop(){
   closeCropModal();
 }
 
+// Place the exported card on a canvas of the chosen aspect ratio (card is never cropped or stretched).
+function fitToRatio(cardCanvas){
+  const v = document.getElementById('exportRatio').value;
+  if(v === 'auto') return cardCanvas;
+  let r = parseFloat(v);
+  if(v === 'custom'){
+    const cwid = parseFloat(document.getElementById('exportRatioW').value), chei = parseFloat(document.getElementById('exportRatioH').value);
+    r = (cwid > 0 && chei > 0) ? cwid / chei : NaN;
+    if(!isFinite(r)) return cardCanvas;
+    r = Math.min(Math.max(r, 0.2), 5);   // keep the output a sane size
+  }
+  const pad = 0.04;
+  const cw = cardCanvas.width, ch = cardCanvas.height;
+  const needW = cw * (1 + 2*pad), needH = ch * (1 + 2*pad);
+  const outW = Math.round(Math.max(needW, needH * r)), outH = Math.round(outW / r);
+  const out = document.createElement('canvas'); out.width = outW; out.height = outH;
+  const g = out.getContext('2d');
+  const mode = document.getElementById('exportBg').value;
+  if(mode !== 'clear'){
+    g.fillStyle = mode === 'white' ? '#ffffff' : mode === 'dark' ? '#111111'
+      : (getComputedStyle(document.documentElement).getPropertyValue('--primary').trim() || '#111111');
+    g.fillRect(0, 0, outW, outH);
+  }
+  g.drawImage(cardCanvas, Math.round((outW - cw)/2), Math.round((outH - ch)/2));
+  return out;
+}
+
 function exportPNG(){
   const noExportEls = document.querySelectorAll('.no-export');
   noExportEls.forEach(el=> el.style.visibility = 'hidden');
@@ -1364,7 +1419,7 @@ function exportPNG(){
     ctrlCols.forEach(el=> el.style.display = '');
     const link = document.createElement('a');
     link.download = 'player-stat-card.png';
-    link.href = canvas.toDataURL('image/png');
+    link.href = fitToRatio(canvas).toDataURL('image/png');
     link.click();
   }).catch(err=>{
     restoreLook();
@@ -1384,7 +1439,9 @@ const CARD_NATIVE_WIDTH = 920;
 function updateCardScale(){
   // Natural width: 920px, or wider if the content (many columns / long names) needs it.
   cardEl.style.width = CARD_NATIVE_WIDTH + 'px';
-  const nativeW = Math.max(CARD_NATIVE_WIDTH, cardEl.scrollWidth + 8);
+  // Equal-width columns: grow the card so each stat column keeps at least MIN_COL px (label col 128 + controls col 34 + border 8).
+  const MIN_COL = 150, nCols = Math.max(1, getActiveColumnCount());
+  const nativeW = Math.max(CARD_NATIVE_WIDTH, 128 + nCols * MIN_COL + 34 + 8, cardEl.scrollWidth + 8);
   cardEl.style.width = nativeW + 'px';
 
   const isStacked = window.innerWidth < (CARD_NATIVE_WIDTH + 340 + 28 + 48);
