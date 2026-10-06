@@ -76,8 +76,8 @@ dialog canvas{width:100%;border:1px solid #ddd6c8;border-radius:4px}
  <button id="bOpen" class="s">Load Progress</button>
  <button id="bSave" class="s">Save Progress</button>
  <span class="sp"></span>
- <button id="bExport" class="s">Export ZIP</button>
- <button id="bPub" class="g">Publish</button>
+ <button id="bExport" class="g">Export ZIP</button>
+ 
  <input type="file" id="fOpen" accept=".json" hidden>
  <input type="file" id="fIdx" accept=".json" hidden>
  <input type="file" id="fImg" accept="image/*" multiple hidden>
@@ -118,15 +118,6 @@ dialog canvas{width:100%;border:1px solid #ddd6c8;border-radius:4px}
  <textarea id="cData" rows="7" placeholder="Label, Value&#10;Label, Value&#10;&#10;Add more columns for more series. First row can be a header."></textarea>
  <canvas id="cv" width="1200" height="675"></canvas>
  <div class="row" style="margin-top:10px"><button id="cOk" class="g">Insert</button><button id="cNo" class="s">Cancel</button></div>
-</dialog>
-<dialog id="pubDlg">
- <h3>Publish to GitHub</h3>
- <input type="text" id="ghRepo" placeholder="owner/repo">
- <input type="text" id="ghSite" placeholder="Site address">
- <input type="password" id="ghTok" placeholder="GitHub token (saved on this computer only)">
- <div style="font-size:12px;color:#666;margin-bottom:8px">One-time: <a href="https://github.com/settings/personal-access-tokens/new" target="_blank">create a fine-grained token</a> for this repo with Contents: Read and write.</div>
- <div id="ghMsg" style="font-size:13px;color:#C8202F;min-height:18px;margin-bottom:6px"></div>
- <div class="row"><button id="pubGo" class="g">Publish</button><button id="pubNo" class="s">Cancel</button></div>
 </dialog>
 <dialog id="msgDlg"><div id="msgBody"></div><div class="row" style="margin-top:12px"><button id="msgOk">OK</button><button id="msgNo" class="s">Cancel</button></div></dialog>
 
@@ -364,17 +355,44 @@ function mdToVis(md){var h=marked.parse(md,{gfm:true});
   h=h.replace(/<div class="statcard" data-src="([^"]+)"><\/div>/g,function(m,n){return phHTML(m,'Stat card: '+(imgs[n]?imgs[n].title:n))});
   return h}
 function visFlag(){VIS.classList.toggle('empty',!VIS.textContent.trim()&&!VIS.querySelector('img,.ph,table'))}
-function visRefresh(){if(!visOn)return;VIS.innerHTML=mdToVis(T.value)||'<p><br></p>';visFlag()}
+function visRefresh(){if(!visOn)return;VIS.innerHTML=mdToVis(T.value)||'<p><br></p>';var l=VIS.lastElementChild;if(l&&(l.classList.contains('ph')||(!l.textContent.trim()&&l.querySelector('img'))))VIS.appendChild(document.createRange().createContextualFragment('<p><br></p>'));visFlag()}
 function visSync(){T.value=td.turndown(VIS.innerHTML).replace(/\n{3,}/g,'\n\n');visFlag();changed()}
 VIS.addEventListener('input',visSync);
 document.addEventListener('selectionchange',function(){var s=getSelection();if(s.rangeCount&&VIS.contains(s.anchorNode))lastRange=s.getRangeAt(0).cloneRange()});
-function visFocus(){VIS.focus();var s=getSelection();if(lastRange&&VIS.contains(lastRange.startContainer)){s.removeAllRanges();s.addRange(lastRange)}else{var r=document.createRange();r.selectNodeContents(VIS);r.collapse(false);s.removeAllRanges();s.addRange(r)}}
+function visFocus(){var s=getSelection(),cur=s.rangeCount&&VIS.contains(s.getRangeAt(0).startContainer)?s.getRangeAt(0).cloneRange():null;if(cur)lastRange=cur;VIS.focus();if(lastRange&&VIS.contains(lastRange.startContainer)){s.removeAllRanges();s.addRange(lastRange)}else{var r=document.createRange();r.selectNodeContents(VIS);r.collapse(false);s.removeAllRanges();s.addRange(r)}}
 function setMode(v){if(v===visOn)return;visOn=v;
   if(v){VIS.style.display='';T.style.display='none';visRefresh()}else{VIS.style.display='none';T.style.display=''}
   $('mV').classList.toggle('on',v);$('mM').classList.toggle('on',!v);try{localStorage.setItem('sst-mode',v?'v':'m')}catch(e){}}
 $('mV').onclick=function(){setMode(true)};$('mM').onclick=function(){setMode(false)};
+function insertBlocks(html){
+  visFocus();var sel=getSelection(),r=sel.getRangeAt(0),b=r.startContainer;
+  if(b===VIS)b=VIS.childNodes[r.startOffset]||VIS.lastChild;else while(b&&b.parentNode!==VIS)b=b.parentNode;
+  var tpl=document.createElement('template');tpl.innerHTML=html;var nodes=[].slice.call(tpl.content.childNodes).filter(function(n){return n.nodeType!==3||n.textContent.trim()});
+  var ref=null,before=false;
+  if(!b){ref=null}
+  else{
+    var isTxt=b.nodeType===1&&!b.classList.contains('ph')&&/^(P|DIV|H[1-6])$/.test(b.nodeName);
+    var empty=isTxt&&!b.textContent.trim()&&!b.querySelector('img');
+    if(empty){ref=b;before=true;var rm=b}
+    else if(isTxt&&VIS.contains(r.startContainer)&&r.startContainer!==VIS){
+      var a=document.createRange();a.selectNodeContents(b);a.setEnd(r.startContainer,r.startOffset);var head=a.cloneContents();
+      var z=document.createRange();z.selectNodeContents(b);z.setStart(r.startContainer,r.startOffset);var tail=z.cloneContents();
+      var hasH=head.textContent.length>0||head.querySelector('img'),hasT=tail.textContent.length>0||tail.querySelector('img');
+      if(hasH&&hasT){var nb=b.cloneNode(false);nb.appendChild(z.extractContents());b.parentNode.insertBefore(nb,b.nextSibling);ref=b;}
+      else if(!hasH){ref=b;before=true}else ref=b;
+    }else ref=b;
+  }
+  var anchor;
+  if(!ref){nodes.forEach(function(n){VIS.appendChild(n)});anchor=VIS.lastChild}
+  else if(before){nodes.forEach(function(n){VIS.insertBefore(n,ref)});anchor=nodes[nodes.length-1];if(rm&&!rm.textContent.trim()&&!rm.querySelector('img')){/* keep as the line below */anchor=nodes[nodes.length-1]}}
+  else{var nx=ref.nextSibling;nodes.forEach(function(n){VIS.insertBefore(n,nx)});anchor=nodes[nodes.length-1]}
+  var after=anchor&&anchor.nextSibling;
+  if(!(after&&after.nodeType===1&&/^(P|DIV)$/.test(after.nodeName)&&!after.classList.contains('ph')&&!after.textContent.trim()&&!after.querySelector('img'))){after=document.createElement('p');after.innerHTML='<br>';VIS.insertBefore(after,anchor?anchor.nextSibling:null)}
+  var nr=document.createRange();nr.setStart(after,0);nr.collapse(true);sel.removeAllRanges();sel.addRange(nr);lastRange=nr.cloneRange();
+  visSync();
+}
 function insert(s){
-  if(visOn){visFocus();document.execCommand('insertHTML',false,mdToVis(s));return}
+  if(visOn){insertBlocks(mdToVis(s));return}
   var a=T.selectionStart,b=T.selectionEnd;T.setRangeText(s,a,b,'end');T.focus();changed()}
 function wrap(l,r,ph){var a=T.selectionStart,b=T.selectionEnd,s=T.value.slice(a,b)||ph;T.setRangeText(l+s+r,a,b,'select');T.setSelectionRange(a+l.length,a+l.length+s.length);T.focus();changed()}
 function linePrefix(p){var a=T.selectionStart,b=T.selectionEnd,v=T.value,st=v.lastIndexOf('\n',a-1)+1,en=v.indexOf('\n',b);if(en<0)en=v.length;
@@ -509,44 +527,7 @@ $('bExport').onclick=async function(){
   P.files.forEach(function(f){zip.file(f.path,f.blob)});
   if(mergeIdx)zip.file('posts/index.json',JSON.stringify(withEntry(mergeIdx,P.entry),null,1));
   dl(await zip.generateAsync({type:'blob'}),P.slug+'.zip');
-  dialog('Exported <b>'+P.slug+'.zip</b>.<br><br>Unzip it, then upload the <b>posts</b> folder to your repo (GitHub → Add file → Upload files).');
-};
-/* ---------- one-click publish to GitHub ---------- */
-function cfg(){try{return JSON.parse(localStorage.getItem('sst-gh'))||{}}catch(e){return{}}}
-function openPub(){var c=cfg();$('ghRepo').value=c.repo||'MisterVicky9/sporttools';$('ghTok').value=c.token||'';$('ghSite').value=c.site||'https://mistervicky9.github.io/sporttools/';$('ghMsg').textContent='';$('pubDlg').showModal()}
-$('bPub').onclick=openPub;$('pubNo').onclick=function(){$('pubDlg').close()};
-async function gh(c,path,opt){
-  var r=await fetch('https://api.github.com/repos/'+c.repo+path,Object.assign({headers:{Authorization:'Bearer '+c.token,Accept:'application/vnd.github+json','Content-Type':'application/json'}},opt||{}));
-  if(!r.ok){var m='';try{m=(await r.json()).message}catch(e){}throw new Error(r.status+' '+(m||r.statusText))}
-  return r.status===204?null:r.json();
-}
-$('pubGo').onclick=async function(){
-  var c={repo:$('ghRepo').value.trim(),token:$('ghTok').value.trim(),site:$('ghSite').value.trim()},msg=$('ghMsg');
-  if(!/^[\w.-]+\/[\w.-]+$/.test(c.repo)||!c.token){msg.textContent='Enter the repo (owner/name) and token.';return}
-  try{localStorage.setItem('sst-gh',JSON.stringify(c))}catch(e){}
-  var P=await buildPost();if(!P){$('pubDlg').close();return}
-  $('pubGo').disabled=true;
-  try{
-    msg.textContent='Connecting…';
-    var rp=await gh(c,''),br=rp.default_branch;
-    var ref=await gh(c,'/git/ref/heads/'+br),cm=await gh(c,'/git/commits/'+ref.object.sha);
-    msg.textContent='Reading post index…';
-    var list=[];try{var ix=await gh(c,'/contents/posts/index.json?ref='+br);list=JSON.parse(decodeURIComponent(escape(atob(ix.content.replace(/\n/g,'')))))}catch(e){if(String(e.message).indexOf('404')!==0)throw e}
-    var all=P.files.slice();all.push({path:'posts/index.json',blob:new Blob([JSON.stringify(withEntry(list,P.entry),null,1)])});
-    var tree=[];
-    for(var i=0;i<all.length;i++){msg.textContent='Uploading '+(i+1)+' of '+all.length+'…';
-      var d=(await b64(all[i].blob)).split(',')[1];
-      var bl=await gh(c,'/git/blobs',{method:'POST',body:JSON.stringify({content:d,encoding:'base64'})});
-      tree.push({path:all[i].path,mode:'100644',type:'blob',sha:bl.sha})}
-    msg.textContent='Publishing…';
-    var tr=await gh(c,'/git/trees',{method:'POST',body:JSON.stringify({base_tree:cm.tree.sha,tree:tree})});
-    var nc=await gh(c,'/git/commits',{method:'POST',body:JSON.stringify({message:'Add post: '+P.entry.title,tree:tr.sha,parents:[ref.object.sha]})});
-    await gh(c,'/git/refs/heads/'+br,{method:'PATCH',body:JSON.stringify({sha:nc.sha})});
-    $('pubDlg').close();
-    var u=c.site.replace(/\/?$/,'/')+'post.html?p='+P.slug;
-    dialog('Published.<br><br>It goes live in about a minute:<br><a href="'+u+'" target="_blank">'+u+'</a>');
-  }catch(e){msg.textContent=(/401|403/.test(e.message)?'GitHub rejected the token (needs Contents: read & write on this repo). ':'')+'Failed: '+e.message}
-  $('pubGo').disabled=false;
+  dialog('Exported <b>'+P.slug+'.zip</b>.<br><br>Unzip it, then drag the <b>posts</b> folder into your GitHub repo (Add file → Upload files) and commit.');
 };
 window.addEventListener('beforeunload',saveLocal);
 /* ---------- init ---------- */
