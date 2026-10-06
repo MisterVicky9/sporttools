@@ -33,6 +33,7 @@
   var $=VPUI.$, CTX, RECS=[], mine=[], PK, cols=[], tableRows=[], last;
   var id=new URLSearchParams(location.search).get('id');
   var DEFAULTS=['G','PA','HR','R','RBI','SB','BB%','K%','AVG','OBP','SLG','wOBA','wRC+','Off','Def','WAR'];
+  VPUI.warHref=function(r){ return (r.id&&r.Season!=null&&String(r.SeasonLabel)===String(r.Season)&&!r._career)? 'war.html?id='+encodeURIComponent(r.id)+'&season='+r.Season : null; };
   var METRIC='wRC+';
 
   function load(data){

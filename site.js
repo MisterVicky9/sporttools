@@ -6,7 +6,7 @@
     {t:'Blog',h:'blog.html'},
     {t:'Stat Card Builder',h:'statcard.html'},
     {t:'Leaderboards',k:[['Vicky+ Pitchers','vickyplus.html'],['Position Players','hitters.html']]},
-    {t:'Calculators',k:[['wOBA','woba.html'],['wRC+','wrc-plus.html'],['FIP','fip.html'],['FIP-','fip-minus.html'],['Passer Rating','passer-rating.html'],['NBA Shooting','nba-shooting.html'],['Trade Value','trade-values.html']]}
+    {t:'Calculators',k:[['wOBA','woba.html'],['wRC+','wrc-plus.html'],['FIP','fip.html'],['FIP-','fip-minus.html'],['Passer Rating','passer-rating.html'],['NBA Shooting','nba-shooting.html'],['Trade Value','trade-values.html'],['WAR Editor','war.html']]}
   ];
   var css='.sitenav{position:sticky;top:0;z-index:9000;margin-top:5px;background:var(--blue-dark,#27646B);font-family:"Segoe UI",Arial,sans-serif;box-shadow:0 1px 0 rgba(0,0,0,.15)}'+
   '.sitenav-in{max-width:1100px;margin:0 auto;display:flex;align-items:center;padding:0 12px;position:relative}'+

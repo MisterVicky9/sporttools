@@ -50,6 +50,7 @@
 <script>
 (function(){
   var $=VPUI.$, esc=VPUI.esc;
+  VPUI.warHref=function(r){ return (r.id&&r.Season!=null&&String(r.SeasonLabel)===String(r.Season)&&!r._career&&mode!=='team')? 'pitcher-war.html?id='+encodeURIComponent(r.id)+'&season='+r.Season : null; };
   var CTX, SC, PK, sel=[], mode='player', sortKey='V', sortDir='desc', limit=250, shownRows=[], cols=[];
 
   function setMode(m){

@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WAR Editor – Pitchers</title>
+<link rel="stylesheet" href="vickyplus.css">
+<link rel="stylesheet" href="theme.css">
+<script src="site.js"></script>
+<style>
+  .wrap{ max-width:900px; }
+  .top{ display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-bottom:12px; position:relative; }
+  .top input[type=search]{ padding:9px 12px; border:1px solid #cfc8b8; border-radius:6px; font-size:15px; width:min(320px,100%); }
+  #results{ position:absolute; top:44px; left:0; z-index:20; background:#fff; border:1px solid #cfc8b8; border-radius:6px; box-shadow:0 6px 16px rgba(0,0,0,.15); width:min(420px,100%); max-height:320px; overflow:auto; display:none; }
+  #results div{ padding:8px 12px; cursor:pointer; font-size:14px; border-bottom:1px solid #eee; }
+  #results div:hover{ background:var(--blue-tint); }
+  .big{ display:flex; align-items:baseline; gap:14px; flex-wrap:wrap; margin:4px 0 12px; }
+  .big .war{ font-size:44px; font-weight:800; color:var(--blue-dark); line-height:1; }
+  .big .sub{ font-size:14px; color:#555; }
+  .big .d.pos{ color:var(--green-dark); font-weight:700; } .big .d.neg{ color:var(--red); font-weight:700; }
+  table.runs{ width:100%; border-collapse:collapse; }
+  table.runs td{ padding:7px 6px; border-bottom:1px solid #e3ddd0; font-size:15px; }
+  table.runs td.l{ font-weight:600; text-align:left; }
+  table.runs td.o{ color:#888; font-size:12px; text-align:right; white-space:nowrap; }
+  table.runs td.o a{ color:var(--blue); cursor:pointer; text-decoration:underline; }
+  table.runs input{ width:110px; padding:6px 8px; border:1px solid #cfc8b8; border-radius:5px; font-size:15px; text-align:right; }
+  table.runs input[readonly]{ background:var(--blue-tint); border-color:#cfe4e8; }
+  table.runs tr.tot td{ font-weight:800; border-top:2px solid var(--blue-dark); border-bottom:0; }
+  .sw{ display:flex; align-items:center; gap:10px; font-size:14px; font-weight:600; color:var(--blue-dark); cursor:pointer; margin:14px 0 8px; }
+  .switch{ position:relative; width:42px; height:24px; flex:none; } .switch input{ opacity:0; position:absolute; width:0; height:0; }
+  .slider{ position:absolute; inset:0; background:#b5bcc9; border-radius:24px; transition:.15s; } .slider::before{ content:""; position:absolute; width:18px; height:18px; left:3px; top:3px; background:#fff; border-radius:50%; transition:.15s; }
+  .switch input:checked + .slider{ background:var(--green); } .switch input:checked + .slider::before{ transform:translateX(18px); }
+  .grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(112px,1fr)); gap:10px 12px; margin:8px 0; }
+  .grid label{ display:block; font-size:11px; font-weight:700; color:#555; margin-bottom:3px; }
+  .grid input, .grid select{ width:100%; padding:6px 7px; border:1px solid #cfc8b8; border-radius:5px; font-size:14px; }
+  .sect{ background:var(--blue-tint); border:1px solid #cfe4e8; border-radius:8px; padding:12px 14px; margin-top:10px; }
+  .sect h4{ margin:0 0 4px; font-size:13px; text-transform:uppercase; letter-spacing:.04em; color:var(--blue-dark); }
+  .hide{ display:none; }
+  .formula{ font-size:13px; color:#555; margin:4px 0 0; }
+
+  .tabs{ display:flex; gap:6px; margin:0 0 12px; } .tabs a{ padding:7px 14px; border:1px solid #cfc8b8; border-radius:6px; font-weight:700; font-size:14px; color:var(--blue-dark); text-decoration:none; background:#fff; } .tabs a.on{ background:var(--blue); border-color:var(--blue); color:#fff; }
+  table.calc{ width:100%; border-collapse:collapse; margin-top:12px; } table.calc td{ text-align:left; padding:5px 6px; border-bottom:1px solid #e3ddd0; font-size:14px; } table.calc td.v{ text-align:right; font-weight:700; font-variant-numeric:tabular-nums; }
+</style>
+</head>
+<body>
+<h2 class="pagetitle">WAR Editor</h2>
+<div class="card wrap">
+  <div class="tabs"><a href="war.html">Position Players</a><a class="on" href="pitcher-war.html">Pitchers</a></div>
+  <div class="top">
+    <input type="search" id="q" placeholder="Search a pitcher" autocomplete="off">
+    <select id="seasonSel" style="padding:9px;border:1px solid #cfc8b8;border-radius:6px;font-size:15px"></select>
+    <button class="btn secondary" id="manual" type="button">Start blank</button>
+    <div id="results"></div>
+  </div>
+  <div id="who" style="font-size:18px;font-weight:800;margin-bottom:2px"></div>
+  <div class="big"><span class="war" id="warOut">–</span><span class="sub" id="warSub"></span></div>
+  <div class="sect"><h4>Pitcher</h4>
+    <div class="grid">
+      <div><label>IP</label><input type="number" id="ip" step="0.1"></div>
+      <div><label>G</label><input type="number" id="g"></div>
+      <div><label>GS</label><input type="number" id="gs"></div>
+      <div><label>HR</label><input type="number" id="hr" step="0.1"></div>
+      <div><label>BB + HBP</label><input type="number" id="bbhbp" step="0.1"></div>
+      <div><label>K</label><input type="number" id="k" step="0.1"></div>
+      <div><label>IFFB</label><input type="number" id="iffb" step="0.1"></div>
+      <div><label>Park factor</label><input type="number" id="pf" step="1" value="100"></div>
+      <div><label>gmLI</label><input type="number" id="gmli" step="0.01" value="1"></div>
+      <div><label>League</label><select id="lg"><option>AL</option><option>NL</option></select></div>
+    </div>
+  </div>
+  <table class="calc" id="calc"></table>
+  <label class="sw"><span class="switch"><input type="checkbox" id="gutsOn"><span class="slider"></span></span> Edit league values</label>
+  <div id="gutsPanel" class="hide"><div class="sect"><h4>League</h4>
+    <div class="grid">
+      <div><label>Year</label><select id="gutsYear"></select></div>
+      <div><label>League ERA</label><input type="number" id="g_lgERA" step="0.001"></div>
+      <div><label>League RA/9</label><input type="number" id="g_lgRA9" step="0.001"></div>
+      <div><label>ifFIP (no constant), all</label><input type="number" id="g_rawLG" step="0.001"></div>
+      <div><label>ifFIP (no constant), AL</label><input type="number" id="g_rawAL" step="0.001"></div>
+      <div><label>ifFIP (no constant), NL</label><input type="number" id="g_rawNL" step="0.001"></div>
+    </div></div></div>
+  <div class="status" id="status">Loading…</div>
+</div>
+<script>
+(function(){
+  var $=function(i){return document.getElementById(i)}, esc=function(s){return String(s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})};
+  var AL={BAL:1,BOS:1,NYY:1,TBR:1,TOR:1,CHW:1,CLE:1,DET:1,KCR:1,MIN:1,HOU:1,LAA:1,OAK:1,ATH:1,SEA:1,TEX:1};
+  var G={}, GYEARS=[], IDX={}, ROWS=[], byKey={}, REC=null;
+  function num(id){ var v=parseFloat($(id).value); return isFinite(v)?v:0; }
+  function n(x){ return x==null||!isFinite(x)?0:x; }
+  function tip(ip){ var w=Math.floor(ip+1e-9); return w+Math.round((ip-w)*10)/3; }
+  function parseCSV(t){ var L=t.replace(/^﻿/,'').trim().split(/\r?\n/), H=L[0].split(','), o={}; L.slice(1).forEach(function(l){ var c=l.split(','), r={}; H.forEach(function(h,i){ r[h]=parseFloat(c[i]); }); o[r.Season]=r; }); return o; }
+  function load(data){
+    data.columns.forEach(function(c,i){ IDX[c.name]=i; });
+    data.rows.forEach(function(r){
+      var y=r[IDX.Season], I=tip(r[IDX.IP]||0), gm=r[IDX.G]||0; if(!I||!gm) return;
+      var k=r[IDX.PlayerId]+'|'+y, g=byKey[k];
+      if(!g){ g=byKey[k]={id:String(r[IDX.PlayerId]),Name:r[IDX.Name],Season:y,teams:[],lg:null,lgIP:0,c:{IP:0,G:0,GS:0,HR:0,BBHBP:0,K:0,IFFB:0,WAR:0,li:0}}; ROWS.push(g); }
+      var HR=n(r[IDX.HR]), K=n(r[IDX.SO]), BB=n(r[IDX.BB])+n(r[IDX.HBP]), c=g.c;
+      c.IP+=I; c.G+=gm; c.GS+=r[IDX.GS]||0; c.HR+=HR; c.K+=K; c.BBHBP+=BB; c.IFFB+=n(r[IDX['IFFB%']])*n(r[IDX['FB%']])*n(r[IDX.Events]); c.WAR+=r[IDX.WAR]||0; c.li+=n(r[IDX.gmLI])*I;
+      var t=r[IDX.Team]; if(t&&g.teams.indexOf(t)<0) g.teams.push(t);
+      if(I>g.lgIP){ g.lgIP=I; g.lg=AL[t]?'AL':'NL'; }
+    });
+  }
+  function setGuts(y){ var g=G[y]; if(!g) return; $('gutsYear').value=y; ['lgERA','lgRA9','rawLG','rawAL','rawNL'].forEach(function(f){ $('g_'+f).value=g[f]; }); }
+  function opts(sel,list,cur){ sel.innerHTML=list.map(function(y){return '<option'+(String(y)===String(cur)?' selected':'')+'>'+y+'</option>';}).join(''); }
+  function row(l,v){ return '<tr><td>'+l+'</td><td class="v">'+v+'</td></tr>'; }
+  function calc(){
+    var I=tip(num('ip')), gm=num('g'), gs=num('gs'), HR=num('hr'), BB=num('bbhbp'), K=num('k'), IF=num('iffb');
+    var lgERA=num('g_lgERA'), lgRA9=num('g_lgRA9'), pf=num('pf')||100, li=num('gmli')||1;
+    var raw=$('lg').value==='AL'?num('g_rawAL'):num('g_rawNL');
+    if(I<=0||gm<=0){ $('warOut').textContent='–'; $('calc').innerHTML=''; $('warSub').textContent=''; return; }
+    var cst=lgERA-num('g_rawLG'), adj=lgRA9-lgERA;
+    var ifp=(13*HR+3*BB-2*(K+IF))/I+cst, fr=ifp+adj, pfr=fr/(pf/100), lgf=raw+cst+adj;
+    var raap=lgf-pfr, ipg=I/gm, drpw=(((18-ipg)*lgf+ipg*pfr)/18+2)*1.5, waa=raap/drpw;
+    var s=Math.min(1,gs/gm), rep=0.03*(1-s)+0.12*s, wpgar=waa+rep, base=wpgar*I/9;
+    var mult=1+(1-s)*((1+li)/2-1), war=base*mult;
+    $('warOut').textContent=war.toFixed(1);
+    var sub=''; if(REC){ var d=war-REC.WAR; sub='data '+REC.WAR.toFixed(1)+'  <span class="d '+(d>=0.05?'pos':d<=-0.05?'neg':'')+'">'+(d>=0?'+':'')+d.toFixed(1)+'</span>  ·  '; }
+    $('warSub').innerHTML=sub+war.toFixed(2)+' WAR';
+    $('calc').innerHTML=row('ifFIP',ifp.toFixed(2))+row('FIPR9',fr.toFixed(2))+row('Park-adjusted FIPR9',pfr.toFixed(2))+row('League FIPR9 ('+$('lg').value+')',lgf.toFixed(2))+row('RAAP9',raap.toFixed(2))+row('Dynamic runs per win',drpw.toFixed(2))+row('WPGAA',waa.toFixed(3))+row('Replacement level',rep.toFixed(3))+row('WPGAR',wpgar.toFixed(3))+row('WAR before leverage',base.toFixed(2))+row('Leverage multiplier',mult.toFixed(3));
+  }
+  function loadPlayer(g,o){
+    REC=g?g.c:null; var c=g?g.c:null;
+    if(g){
+      $('who').textContent=g.Name+' · '+g.Season+(g.teams.length?' · '+g.teams.join('/'):'');
+      if(G[g.Season]) setGuts(g.Season);
+      $('ip').value=(Math.floor(c.IP+1e-9)+Math.round((c.IP-Math.floor(c.IP+1e-9))*3)/10).toFixed(1); $('g').value=c.G; $('gs').value=c.GS;
+      $('hr').value=c.HR.toFixed(1); $('bbhbp').value=c.BBHBP.toFixed(1); $('k').value=c.K.toFixed(1); $('iffb').value=c.IFFB.toFixed(1);
+      $('pf').value=100; $('gmli').value=(c.li/c.IP).toFixed(2); $('lg').value=g.lg;
+      var ys=ROWS.filter(function(x){return x.id===g.id;}).map(function(x){return x.Season;}).sort();
+      opts($('seasonSel'),ys,g.Season); $('seasonSel').dataset.id=g.id; $('seasonSel').style.display='';
+    } else {
+      $('who').textContent='Blank'; ['ip','g','gs','hr','bbhbp','k','iffb'].forEach(function(i){ $(i).value=''; }); $('pf').value=100; $('gmli').value=1; $('seasonSel').style.display='none';
+      if(GYEARS.length) setGuts(GYEARS[0]);
+    }
+    $('q').value=''; $('results').style.display='none'; calc();
+    if(o&&o.push){ try{ history.replaceState(null,'', g?'pitcher-war.html?id='+encodeURIComponent(g.id)+'&season='+g.Season:'pitcher-war.html'); }catch(e){} }
+  }
+  $('q').addEventListener('input',function(){
+    var q=this.value.trim().toLowerCase(), box=$('results'); if(q.length<2){ box.style.display='none'; return; }
+    var seen={}, out=[]; ROWS.forEach(function(g){ if(g.Name.toLowerCase().indexOf(q)>=0) (seen[g.id]=seen[g.id]||[]).push(g); });
+    Object.keys(seen).slice(0,12).forEach(function(id){ out.push(seen[id].sort(function(a,b){return b.Season-a.Season;})[0]); });
+    box.innerHTML=out.map(function(g){ return '<div data-k="'+esc(g.id+'|'+g.Season)+'">'+esc(g.Name)+' <span style="color:#888">· '+g.Season+(g.teams.length?' · '+esc(g.teams.join('/')):'')+'</span></div>'; }).join('')||'<div style="color:#888">No match</div>';
+    box.style.display='block';
+  });
+  $('results').addEventListener('click',function(e){ var k=e.target.closest('[data-k]'); if(k) loadPlayer(byKey[k.dataset.k],{push:true}); });
+  document.addEventListener('click',function(e){ if(!e.target.closest('.top')) $('results').style.display='none'; });
+  $('seasonSel').addEventListener('change',function(){ var g=byKey[this.dataset.id+'|'+this.value]; if(g) loadPlayer(g,{push:true}); });
+  $('manual').addEventListener('click',function(){ loadPlayer(null,{push:true}); });
+  $('gutsOn').addEventListener('change',function(){ $('gutsPanel').classList.toggle('hide',!this.checked); });
+  $('gutsYear').addEventListener('change',function(){ setGuts(this.value); calc(); });
+  document.querySelectorAll('input[type=number],#lg').forEach(function(i){ i.addEventListener(i.tagName==='SELECT'?'change':'input',calc); });
+  Promise.all(['vickyplus-data.json','pitcher-guts.csv'].map(function(u,i){ return fetch(u).then(function(r){ if(!r.ok) throw 0; return i?r.text():r.json(); }); })).then(function(a){
+    var pg=parseCSV(a[1]); Object.keys(pg).forEach(function(y){ G[y]=pg[y]; }); GYEARS=Object.keys(pg).map(Number).sort(function(a,b){return b-a;});
+    load(a[0]); opts($('gutsYear'),GYEARS,GYEARS[0]); $('status').textContent='';
+    var p=new URLSearchParams(location.search), g=byKey[p.get('id')+'|'+p.get('season')];
+    loadPlayer(g||null); if(!g) $('who').textContent='Search a pitcher or start blank';
+  }).catch(function(){ $('status').className='status err'; $('status').textContent='Could not load data files.'; });
+})();
+</script>
+</body>
+</html>

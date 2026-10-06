@@ -8,7 +8,10 @@ var VPUI = (function(){
 
   function dataCol(ctx,name){
     var m=ctx.meta[name], i=ctx.idx[name];
-    return {k:'c:'+name, label:name, txt:m.type==='text', get:function(r){ return r.raw[i]; }, fmt:VP.fmtFor(m)};
+    var col={k:'c:'+name, label:name, txt:m.type==='text', get:function(r){ return r.raw[i]; }, fmt:VP.fmtFor(m)};
+    // WAR links to the WAR editor when the page provides VPUI.warHref(row) (single-season position player rows only)
+    if(name==='WAR') col.html=function(r,s){ var h=VPUI.warHref&&VPUI.warHref(r); return h? '<a class="warlink" href="'+esc(h)+'" title="Open in WAR editor">'+esc(s)+'</a>' : esc(s); };
+    return col;
   }
   function sortRows(rows,col,dir){
     var d=dir==='asc'?1:-1;

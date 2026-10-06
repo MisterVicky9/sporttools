@@ -50,6 +50,7 @@
   var $=VPUI.$, esc=VPUI.esc;
   var CTX, RECS=[], PK, mode='player', sel=[], sortKey='', sortDir='desc', limit=250, shownRows=[], cols=[];
   var POS_ORDER=['C','1B','2B','3B','SS','LF','CF','RF','OF','DH'];
+  VPUI.warHref=function(r){ return (r.id&&r.Season!=null&&String(r.SeasonLabel)===String(r.Season)&&!r._career&&mode!=='team')? 'war.html?id='+encodeURIComponent(r.id)+'&season='+r.Season : null; };
   var DEFAULTS=['Team','Pos','G','PA','HR','R','RBI','SB','BB%','K%','AVG','OBP','SLG','wOBA','wRC+','Off','Def','WAR'];
 
   function primary(v){ return v==null||v==='' ? '' : String(v).toUpperCase().split(/[\/,\- ]+/)[0]; }

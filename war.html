@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WAR Editor</title>
+<link rel="stylesheet" href="vickyplus.css">
+<link rel="stylesheet" href="theme.css">
+<script src="site.js"></script>
+<style>
+  .wrap{ max-width:900px; }
+  .top{ display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-bottom:12px; position:relative; }
+  .top input[type=search]{ padding:9px 12px; border:1px solid #cfc8b8; border-radius:6px; font-size:15px; width:min(320px,100%); }
+  #results{ position:absolute; top:44px; left:0; z-index:20; background:#fff; border:1px solid #cfc8b8; border-radius:6px; box-shadow:0 6px 16px rgba(0,0,0,.15); width:min(420px,100%); max-height:320px; overflow:auto; display:none; }
+  #results div{ padding:8px 12px; cursor:pointer; font-size:14px; border-bottom:1px solid #eee; }
+  #results div:hover{ background:var(--blue-tint); }
+  .big{ display:flex; align-items:baseline; gap:14px; flex-wrap:wrap; margin:4px 0 12px; }
+  .big .war{ font-size:44px; font-weight:800; color:var(--blue-dark); line-height:1; }
+  .big .sub{ font-size:14px; color:#555; }
+  .big .d.pos{ color:var(--green-dark); font-weight:700; } .big .d.neg{ color:var(--red); font-weight:700; }
+  table.runs{ width:100%; border-collapse:collapse; }
+  table.runs td{ padding:7px 6px; border-bottom:1px solid #e3ddd0; font-size:15px; }
+  table.runs td.l{ font-weight:600; text-align:left; }
+  table.runs td.o{ color:#888; font-size:12px; text-align:right; white-space:nowrap; }
+  table.runs td.o a{ color:var(--blue); cursor:pointer; text-decoration:underline; }
+  table.runs input{ width:110px; padding:6px 8px; border:1px solid #cfc8b8; border-radius:5px; font-size:15px; text-align:right; }
+  table.runs input[readonly]{ background:var(--blue-tint); border-color:#cfe4e8; }
+  table.runs tr.tot td{ font-weight:800; border-top:2px solid var(--blue-dark); border-bottom:0; }
+  .sw{ display:flex; align-items:center; gap:10px; font-size:14px; font-weight:600; color:var(--blue-dark); cursor:pointer; margin:14px 0 8px; }
+  .switch{ position:relative; width:42px; height:24px; flex:none; } .switch input{ opacity:0; position:absolute; width:0; height:0; }
+  .slider{ position:absolute; inset:0; background:#b5bcc9; border-radius:24px; transition:.15s; } .slider::before{ content:""; position:absolute; width:18px; height:18px; left:3px; top:3px; background:#fff; border-radius:50%; transition:.15s; }
+  .switch input:checked + .slider{ background:var(--green); } .switch input:checked + .slider::before{ transform:translateX(18px); }
+  .grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(112px,1fr)); gap:10px 12px; margin:8px 0; }
+  .grid label{ display:block; font-size:11px; font-weight:700; color:#555; margin-bottom:3px; }
+  .grid input, .grid select{ width:100%; padding:6px 7px; border:1px solid #cfc8b8; border-radius:5px; font-size:14px; }
+  .sect{ background:var(--blue-tint); border:1px solid #cfe4e8; border-radius:8px; padding:12px 14px; margin-top:10px; }
+  .sect h4{ margin:0 0 4px; font-size:13px; text-transform:uppercase; letter-spacing:.04em; color:var(--blue-dark); }
+  .hide{ display:none; }
+  .formula{ font-size:13px; color:#555; margin:4px 0 0; }
+
+  .tabs{ display:flex; gap:6px; margin:0 0 12px; } .tabs a{ padding:7px 14px; border:1px solid #cfc8b8; border-radius:6px; font-weight:700; font-size:14px; color:var(--blue-dark); text-decoration:none; background:#fff; } .tabs a.on{ background:var(--blue); border-color:var(--blue); color:#fff; }
+  table.calc{ width:100%; border-collapse:collapse; margin-top:12px; } table.calc td{ padding:5px 6px; border-bottom:1px solid #e3ddd0; font-size:14px; } table.calc td.v{ text-align:right; font-weight:700; font-variant-numeric:tabular-nums; }
+</style>
+</head>
+<body>
+<h2 class="pagetitle">WAR Editor</h2>
+<div class="card wrap">
+  <div class="tabs"><a class="on" href="war.html">Position Players</a><a href="pitcher-war.html">Pitchers</a></div>
+  <div class="top">
+    <input type="search" id="q" placeholder="Search a player" autocomplete="off">
+    <select id="seasonSel" style="padding:9px;border:1px solid #cfc8b8;border-radius:6px;font-size:15px"></select>
+    <button class="btn secondary" id="manual" type="button">Start blank</button>
+    <div id="results"></div>
+  </div>
+  <div id="who" style="font-size:18px;font-weight:800;margin-bottom:2px"></div>
+  <div class="big"><span class="war" id="warOut">–</span><span class="sub" id="warSub"></span></div>
+
+  <table class="runs" id="runs"></table>
+
+  <label class="sw"><span class="switch"><input type="checkbox" id="batOn"><span class="slider"></span></span> Edit Batting Runs with stats</label>
+  <div id="batPanel" class="hide">
+    <div class="sect">
+      <h4>wRAA</h4>
+      <div class="grid">
+        <div><label>wOBA</label><input type="number" id="woba" step="0.001"></div>
+        <div><label>PA</label><input type="number" id="pa" step="1"></div>
+        <div><label>League wOBA</label><input type="number" id="g_wOBA" step="0.001"></div>
+        <div><label>wOBA Scale</label><input type="number" id="g_wOBAScale" step="0.001"></div>
+      </div>
+      <div class="formula" id="wraaOut"></div>
+      <label class="sw" style="margin:10px 0 4px"><span class="switch"><input type="checkbox" id="cntOn"><span class="slider"></span></span> Use counting stats for wOBA</label>
+      <div id="cntPanel" class="hide">
+        <div class="grid">
+          <div><label>AB</label><input type="number" id="s_AB"></div><div><label>1B</label><input type="number" id="s_1B"></div><div><label>2B</label><input type="number" id="s_2B"></div>
+          <div><label>3B</label><input type="number" id="s_3B"></div><div><label>HR</label><input type="number" id="s_HR"></div><div><label>BB</label><input type="number" id="s_BB"></div>
+          <div><label>IBB</label><input type="number" id="s_IBB"></div><div><label>HBP</label><input type="number" id="s_HBP"></div><div><label>SF</label><input type="number" id="s_SF"></div>
+        </div>
+        <div class="formula" id="wobaOut"></div>
+      </div>
+    </div>
+    <div class="sect">
+      <h4>Park &amp; league adjustment</h4>
+      <label class="sw" style="margin:2px 0 6px"><span class="switch"><input type="checkbox" id="parkOn"><span class="slider"></span></span> Compute from park factor</label>
+      <div class="grid">
+        <div><label>Adjustment (runs)</label><input type="number" id="adj" step="0.1"></div>
+        <div class="pk hide"><label>Park factor</label><input type="number" id="pf" step="0.01" value="1"></div>
+        <div class="pk hide"><label>League R/PA</label><input type="number" id="g_RPA" step="0.001"></div>
+        <div class="pk hide"><label>Non-pitcher wRC/PA</label><input type="number" id="npw" step="0.001" placeholder="= league R/PA"></div>
+      </div>
+    </div>
+  </div>
+
+  <label class="sw"><span class="switch"><input type="checkbox" id="gutsOn"><span class="slider"></span></span> Edit Guts values</label>
+  <div id="gutsPanel" class="hide">
+    <div class="sect">
+      <h4>Guts</h4>
+      <div class="grid">
+        <div><label>Year</label><select id="gutsYear"></select></div>
+        <div><label>Runs per win</label><input type="number" id="g_RW" step="0.01"></div>
+        <div><label>wBB</label><input type="number" id="g_wBB" step="0.001"></div><div><label>wHBP</label><input type="number" id="g_wHBP" step="0.001"></div>
+        <div><label>w1B</label><input type="number" id="g_w1B" step="0.001"></div><div><label>w2B</label><input type="number" id="g_w2B" step="0.001"></div>
+        <div><label>w3B</label><input type="number" id="g_w3B" step="0.001"></div><div><label>wHR</label><input type="number" id="g_wHR" step="0.001"></div>
+        <div><label>runSB</label><input type="number" id="g_runSB" step="0.01"></div><div><label>runCS</label><input type="number" id="g_runCS" step="0.001"></div>
+      </div>
+    </div>
+  </div>
+  <div class="status" id="status">Loading…</div>
+</div>
+
+<script>
+(function(){
+  var $=function(i){return document.getElementById(i)}, esc=function(s){return String(s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})};
+  var COMP=[['Bat','Batting Runs'],['BsR','Base Running'],['Fld','Fielding'],['Pos Adj','Positional Adjustment'],['Lg Adj','League Adjustment'],['Rep','Replacement']];
+  var GUTS={}, GYEARS=[], IDX={}, ROWS=[], REC=null, ORIG=null, ADJ0=0, byKey={};
+  var GFIELDS=['wOBA','wOBAScale','wBB','wHBP','w1B','w2B','w3B','wHR','runSB','runCS','RPA','RW'];
+  var GCSV={wOBA:'wOBA',wOBAScale:'wOBAScale',wBB:'wBB',wHBP:'wHBP',w1B:'w1B',w2B:'w2B',w3B:'w3B',wHR:'wHR',runSB:'runSB',runCS:'runCS',RPA:'R/PA',RW:'R/W'};
+  function num(id){ var v=parseFloat($(id).value); return isFinite(v)?v:0; }
+  function has(id){ return $(id).value!=='' && isFinite(parseFloat($(id).value)); }
+  function f1(v){ return (Math.round(v*10)/10).toFixed(1); }
+
+  // ---------- data ----------
+  function parseGuts(t){
+    var L=t.replace(/^﻿/,'').trim().split(/\r?\n/), H=L[0].split(',');
+    L.slice(1).forEach(function(l){ var c=l.split(','), o={}; H.forEach(function(h,i){ o[h]=parseFloat(c[i]); }); GUTS[o.Season]=o; GYEARS.push(o.Season); });
+  }
+  function load(data){
+    data.columns.forEach(function(c,i){ IDX[c.name]=i; });
+    var id=IDX.PlayerId!=null?'PlayerId':'MLBAMID';
+    data.rows.forEach(function(r){
+      var k=r[IDX[id]]+'|'+r[IDX.Season], g=byKey[k];
+      var rec={Bat:0,BsR:0,Fld:0,'Pos Adj':0,'Lg Adj':0,Rep:0,WAR:0,PA:0,wsum:0,HR:0,BBn:0,teams:[]};
+      if(!g){ g=byKey[k]={id:String(r[IDX[id]]),Name:r[IDX.Name],Season:r[IDX.Season],teams:[],c:rec}; ROWS.push(g); }
+      var c=g.c, pa=r[IDX.PA]||0;
+      COMP.forEach(function(x){ c[x[0]]+=r[IDX[x[0]]]||0; }); c.WAR+=r[IDX.WAR]||0; c.PA+=pa; c.wsum+=(r[IDX.wOBA]||0)*pa; c.HR+=r[IDX.HR]||0; c.BBn+=(r[IDX['BB%']]||0)*pa;
+      if(r[IDX.Team]&&g.teams.indexOf(r[IDX.Team])<0) g.teams.push(r[IDX.Team]);
+    });
+  }
+
+  // ---------- guts ----------
+  function setGuts(y){
+    var g=GUTS[y]; if(!g) return; $('gutsYear').value=y;
+    GFIELDS.forEach(function(f){ var el=$('g_'+f); if(el) el.value=g[GCSV[f]]; });
+  }
+  function seasonOptions(sel,list,cur){ sel.innerHTML=list.map(function(y){return '<option value="'+y+'"'+(String(y)===String(cur)?' selected':'')+'>'+y+'</option>';}).join(''); }
+
+  // ---------- model ----------
+  function wobaFromCounts(){
+    var AB=num('s_AB'),b1=num('s_1B'),b2=num('s_2B'),b3=num('s_3B'),hr=num('s_HR'),bb=num('s_BB'),ibb=num('s_IBB'),hbp=num('s_HBP'),sf=num('s_SF');
+    var den=AB+bb-ibb+sf+hbp; if(AB<=0||den<=0) return null;
+    return (num('g_wBB')*(bb-ibb)+num('g_wHBP')*hbp+num('g_w1B')*b1+num('g_w2B')*b2+num('g_w3B')*b3+num('g_wHR')*hr)/den;
+  }
+  function currentWoba(){ if($('cntOn').checked){ var w=wobaFromCounts(); if(w!=null) return w; } return num('woba'); }
+  function wraa(){ var sc=num('g_wOBAScale')||1; return (currentWoba()-num('g_wOBA'))/sc*num('pa'); }
+  function adjustment(){
+    if($('parkOn').checked){
+      var rpa=num('g_RPA'), npw=has('npw')?num('npw'):rpa, pa=num('pa');
+      return (rpa-num('pf')*rpa)*pa + (rpa-npw)*pa;
+    }
+    return num('adj');
+  }
+
+  function build(){
+    var h='';
+    COMP.forEach(function(x){
+      h+='<tr><td class="l">'+x[1]+'</td><td><input type="number" step="0.1" id="r_'+x[0].replace(' ','_')+'" '+(x[0]==='Bat'?'data-bat="1" ':'')+'></td><td class="o" id="o_'+x[0].replace(' ','_')+'"></td></tr>';
+    });
+    h+='<tr class="tot"><td class="l">Total runs</td><td><input id="r_tot" readonly></td><td></td></tr>';
+    h+='<tr><td class="l">÷ Runs per win</td><td><input id="r_rw" readonly></td><td></td></tr>';
+    $('runs').innerHTML=h;
+    COMP.forEach(function(x){ $('r_'+x[0].replace(' ','_')).addEventListener('input',calc); });
+  }
+  function setRuns(){
+    COMP.forEach(function(x){
+      var k=x[0].replace(' ','_'), v=REC?REC[x[0]]:0;
+      $('r_'+k).value=f1(v); $('o_'+k).innerHTML=REC?'data '+f1(v)+' <a data-reset="'+k+'" data-v="'+v+'">reset</a>':'';
+    });
+  }
+  function calc(){
+    var batOn=$('batOn').checked, bat=$('r_Bat');
+    if(batOn){ bat.value=f1(wraa()+adjustment()); bat.readOnly=true; var ww=wraa(); $('wraaOut').textContent='wRAA '+f1(ww)+'  +  adjustment '+f1(adjustment())+'  =  Batting Runs '+f1(ww+adjustment())+'   (wOBA '+currentWoba().toFixed(3)+')'; }
+    else bat.readOnly=false;
+    if($('cntOn').checked){ var w=wobaFromCounts(); $('wobaOut').textContent= w==null?'Enter AB and the hit and walk counts':'wOBA from counts: '+w.toFixed(3); }
+    var tot=0; COMP.forEach(function(x){ tot+=parseFloat($('r_'+x[0].replace(' ','_')).value)||0; });
+    var rw=num('g_RW')||1, war=tot/rw;
+    $('r_tot').value=f1(tot); $('r_rw').value=rw.toFixed(2);
+    $('warOut').textContent=war.toFixed(1);
+    var sub='';
+    if(REC){ var d=war-ORIG; sub='data '+ORIG.toFixed(1)+'  <span class="d '+(d>=0.05?'pos':d<=-0.05?'neg':'')+'">'+(d>=0?'+':'')+d.toFixed(1)+'</span>'; }
+    $('warSub').innerHTML=sub+(sub?'  ·  ':'')+war.toFixed(2)+' WAR';
+  }
+
+  // ---------- player ----------
+  function loadPlayer(g,opts){
+    REC=g?g.c:null; var gy=g?g.Season:null;
+    if(g){
+      $('who').textContent=g.Name+' · '+g.Season+(g.teams.length?' · '+g.teams.join('/'):'');
+      if(GUTS[gy]) setGuts(gy);
+      var c=g.c; ORIG=c.WAR;
+      $('woba').value=(c.PA?c.wsum/c.PA:0).toFixed(6); $('pa').value=Math.round(c.PA);
+      ['s_AB','s_1B','s_2B','s_3B','s_IBB','s_HBP','s_SF'].forEach(function(i){ $(i).value=''; });
+      $('s_HR').value=Math.round(c.HR); $('s_BB').value=Math.round(c.BBn);
+      // park & league adjustment that reproduces the data's Batting Runs at the original wOBA
+      var w0=(c.PA?c.wsum/c.PA:0), sc=num('g_wOBAScale')||1;
+      ADJ0=c.Bat-((w0-num('g_wOBA'))/sc*c.PA); $('adj').value=ADJ0.toFixed(1);
+      $('npw').value=''; $('pf').value='1';
+      var ys=ROWS.filter(function(x){return x.id===g.id;}).map(function(x){return x.Season;}).sort();
+      seasonOptions($('seasonSel'),ys,g.Season); $('seasonSel').dataset.id=g.id; $('seasonSel').style.display='';
+    } else {
+      $('who').textContent='Blank'; ORIG=0; ADJ0=0;
+      ['woba','pa','adj','npw','s_AB','s_1B','s_2B','s_3B','s_HR','s_BB','s_IBB','s_HBP','s_SF'].forEach(function(i){ $(i).value=''; });
+      $('pf').value='1'; $('seasonSel').style.display='none';
+      if(GYEARS.length) setGuts(GYEARS[0]);
+    }
+    $('q').value=''; $('results').style.display='none';
+    setRuns(); calc();
+    if(opts&&opts.push){ try{ history.replaceState(null,'', g? 'war.html?id='+encodeURIComponent(g.id)+'&season='+g.Season : 'war.html'); }catch(e){} }
+  }
+
+  // ---------- events ----------
+  $('q').addEventListener('input',function(){
+    var q=this.value.trim().toLowerCase(), box=$('results'); if(q.length<2){ box.style.display='none'; return; }
+    var seen={}, out=[];
+    ROWS.forEach(function(g){ if(g.Name.toLowerCase().indexOf(q)>=0){ (seen[g.id]=seen[g.id]||[]).push(g); } });
+    Object.keys(seen).slice(0,12).forEach(function(id){ var l=seen[id].sort(function(a,b){return b.Season-a.Season;}); out.push(l[0]); });
+    box.innerHTML=out.map(function(g,i){ return '<div data-k="'+esc(g.id+'|'+g.Season)+'">'+esc(g.Name)+' <span style="color:#888">· '+g.Season+(g.teams.length?' · '+esc(g.teams.join('/')):'')+'</span></div>'; }).join('')||'<div style="color:#888">No match</div>';
+    box.style.display='block';
+  });
+  $('results').addEventListener('click',function(e){ var k=e.target.closest('[data-k]'); if(k) loadPlayer(byKey[k.dataset.k],{push:true}); });
+  document.addEventListener('click',function(e){ if(!e.target.closest('.top')) $('results').style.display='none'; });
+  $('seasonSel').addEventListener('change',function(){ var g=byKey[this.dataset.id+'|'+this.value]; if(g) loadPlayer(g,{push:true}); });
+  $('manual').addEventListener('click',function(){ loadPlayer(null,{push:true}); });
+  $('runs').addEventListener('click',function(e){ var a=e.target.closest('[data-reset]'); if(!a) return; $('r_'+a.dataset.reset).value=f1(parseFloat(a.dataset.v)); calc(); });
+  function toggle(sw,panel,after){ $(sw).addEventListener('change',function(){ $(panel).classList.toggle('hide',!this.checked); if(after) after(); calc(); }); }
+  toggle('batOn','batPanel'); toggle('cntOn','cntPanel'); toggle('gutsOn','gutsPanel');
+  $('parkOn').addEventListener('change',function(){ [].forEach.call(document.querySelectorAll('.pk'),function(e){ e.classList.toggle('hide',!$('parkOn').checked); }); $('adj').readOnly=$('parkOn').checked; calc(); });
+  $('gutsYear').addEventListener('change',function(){ setGuts(this.value); calc(); });
+  document.querySelectorAll('input[type=number]').forEach(function(i){ i.addEventListener('input',calc); });
+
+  // ---------- init ----------
+  build();
+  Promise.all([fetch('hitters-data.json').then(function(r){ if(!r.ok) throw 0; return r.json(); }), fetch('guts.csv').then(function(r){ if(!r.ok) throw 0; return r.text(); })]).then(function(a){
+    parseGuts(a[1]); load(a[0]);
+    seasonOptions($('gutsYear'),GYEARS,GYEARS[0]);
+    $('status').textContent='';
+    var p=new URLSearchParams(location.search), id=p.get('id'), s=p.get('season');
+    var g=id&&byKey[id+'|'+s];
+    if(g) loadPlayer(g); else loadPlayer(null);
+    $('who').textContent=g?$('who').textContent:'Search a player or start blank';
+  }).catch(function(){ $('status').className='status err'; $('status').textContent='Could not load data files (needs hitters-data.json and guts.csv).'; });
+})();
+</script>
+</body>
+</html>
