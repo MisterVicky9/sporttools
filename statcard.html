@@ -333,7 +333,7 @@
 
     <h3 style="margin-top:20px;">Export</h3>
     <label for="exportRatio">Aspect ratio</label>
-    <select id="exportRatio" onchange="document.getElementById('exportBgRow').style.display = this.value==='auto' ? 'none' : 'block'; document.getElementById('exportCustomRow').style.display = this.value==='custom' ? 'flex' : 'none';">
+    <select id="exportRatio" onchange="document.getElementById('exportCustomRow').style.display = this.value==='custom' ? 'flex' : 'none';">
       <option value="auto">Original (card size)</option>
       <option value="1">1:1 Square</option>
       <option value="0.8">4:5 Portrait</option>
@@ -347,15 +347,6 @@
     <div id="exportCustomRow" style="display:none; align-items:center; gap:6px; margin-top:6px;">
       <input type="number" id="exportRatioW" value="3" min="1" step="any" style="width:70px;" aria-label="Ratio width"> :
       <input type="number" id="exportRatioH" value="2" min="1" step="any" style="width:70px;" aria-label="Ratio height">
-    </div>
-    <div id="exportBgRow" style="display:none;">
-      <label for="exportBg">Fill around the card</label>
-      <select id="exportBg">
-        <option value="team">Team color</option>
-        <option value="dark">Dark</option>
-        <option value="white">White</option>
-        <option value="clear">Transparent</option>
-      </select>
     </div>
     <button class="export" onclick="exportPNG()" style="margin-top:12px;">Download PNG</button>
     <div class="hint">Exports exactly what's shown on the card — controls, buttons, and swatches are excluded automatically.</div>
@@ -1368,31 +1359,34 @@ function applyCrop(){
   closeCropModal();
 }
 
-// Place the exported card on a canvas of the chosen aspect ratio (card is never cropped or stretched).
-function fitToRatio(cardCanvas){
+// Reshape the card itself to the chosen aspect ratio: columns get wider (or rows taller) evenly, nothing is padded or cropped.
+function selectedRatio(){
   const v = document.getElementById('exportRatio').value;
-  if(v === 'auto') return cardCanvas;
+  if(v === 'auto') return null;
   let r = parseFloat(v);
   if(v === 'custom'){
-    const cwid = parseFloat(document.getElementById('exportRatioW').value), chei = parseFloat(document.getElementById('exportRatioH').value);
-    r = (cwid > 0 && chei > 0) ? cwid / chei : NaN;
-    if(!isFinite(r)) return cardCanvas;
-    r = Math.min(Math.max(r, 0.2), 5);   // keep the output a sane size
+    const w = parseFloat(document.getElementById('exportRatioW').value), h = parseFloat(document.getElementById('exportRatioH').value);
+    r = (w > 0 && h > 0) ? w / h : NaN;
   }
-  const pad = 0.04;
-  const cw = cardCanvas.width, ch = cardCanvas.height;
-  const needW = cw * (1 + 2*pad), needH = ch * (1 + 2*pad);
-  const outW = Math.round(Math.max(needW, needH * r)), outH = Math.round(outW / r);
-  const out = document.createElement('canvas'); out.width = outW; out.height = outH;
-  const g = out.getContext('2d');
-  const mode = document.getElementById('exportBg').value;
-  if(mode !== 'clear'){
-    g.fillStyle = mode === 'white' ? '#ffffff' : mode === 'dark' ? '#111111'
-      : (getComputedStyle(document.documentElement).getPropertyValue('--primary').trim() || '#111111');
-    g.fillRect(0, 0, outW, outH);
+  return isFinite(r) ? Math.min(Math.max(r, 0.2), 5) : null;
+}
+function applyRatioLayout(card){
+  const r = selectedRatio();
+  if(!r) return ()=>{};
+  const prevW = card.style.width;
+  const rows = Array.from(card.querySelectorAll('#statBody tr'));
+  // 1) Wider than the card is now: widen it (table-layout:fixed spreads the width evenly over the columns).
+  //    Wider columns can shorten wrapped names, so re-measure a few times.
+  for(let k = 0; k < 5 && r > card.offsetWidth / card.offsetHeight + 0.002; k++){
+    card.style.width = Math.round(card.offsetHeight * r) + 'px';
   }
-  g.drawImage(cardCanvas, Math.round((outW - cw)/2), Math.round((outH - ch)/2));
-  return out;
+  // 2) Whatever height is still missing is spread evenly over every stat row.
+  const extra = Math.round(card.offsetWidth / r) - card.offsetHeight;
+  if(extra > 0){
+    const heights = rows.map(tr => tr.offsetHeight);
+    rows.forEach((tr, k)=>{ tr.style.height = (heights[k] + extra / rows.length) + 'px'; });
+  }
+  return ()=>{ card.style.width = prevW; rows.forEach(tr=>{ tr.style.height = ''; }); };
 }
 
 function exportPNG(){
@@ -1410,7 +1404,8 @@ function exportPNG(){
   // Keep the rounded corners; the area outside them stays transparent (no white background, no shadow).
   const prevShadow = card.style.boxShadow;
   card.style.boxShadow = 'none';
-  const restoreLook = ()=>{ card.style.boxShadow = prevShadow; card.style.width = prevWidth; };
+  const undoRatio = applyRatioLayout(card);
+  const restoreLook = ()=>{ undoRatio(); card.style.boxShadow = prevShadow; card.style.width = prevWidth; };
 
   html2canvas(card, {scale:2, backgroundColor:null}).then(canvas=>{
     restoreLook();
@@ -1419,7 +1414,7 @@ function exportPNG(){
     ctrlCols.forEach(el=> el.style.display = '');
     const link = document.createElement('a');
     link.download = 'player-stat-card.png';
-    link.href = fitToRatio(canvas).toDataURL('image/png');
+    link.href = canvas.toDataURL('image/png');
     link.click();
   }).catch(err=>{
     restoreLook();
