@@ -10,7 +10,7 @@
   body{ font-family:'Segoe UI', Arial, sans-serif; background:#e8e8e8; margin:0; padding:24px; color:#222; }
   @media (max-width:600px){ body{ padding:12px; } }
   .page-nav{ margin:0 0 16px 0; }
-  .page-nav a{ display:inline-block; font-size:13px; font-weight:600; color:#0b5cab; text-decoration:none; background:#eaf2fb; padding:8px 14px; border-radius:8px; }
+  .page-nav a{ display:inline-block; font-size:13px; font-weight:600; color:#17479E; text-decoration:none; background:#E6EDF8; padding:8px 14px; border-radius:8px; }
   .page-nav a:hover{ background:#dbe9fa; }
   h2.pagetitle{ margin:0 0 4px 0; font-size:22px; }
   .calc-card{ background:#fff; border-radius:12px; padding:22px; max-width:600px; box-shadow:0 2px 8px rgba(0,0,0,0.12); }
@@ -24,7 +24,7 @@
   .calc-card button{ margin-top:16px; background:#222; color:#fff; border:none; border-radius:6px; padding:11px 20px; font-size:14px; font-weight:600; cursor:pointer; }
   .calc-card button:hover{ background:#000; }
   .calc-card button.secondary{ background:#888; }
-  .toggle-btn{ background:none; border:none; color:#0b5cab; font-size:13px; font-weight:600; cursor:pointer; padding:0; text-decoration:underline; }
+  .toggle-btn{ background:none; border:none; color:#17479E; font-size:13px; font-weight:600; cursor:pointer; padding:0; text-decoration:underline; }
   .result-box{ margin-top:18px; padding:14px 16px; border-radius:8px; background:#f0f7f0; border:1px solid #cfe8cf; display:none; }
   .result-box.show{ display:block; }
   .result-box .headline{ font-size:26px; font-weight:800; color:#1a5c1a; }
@@ -36,35 +36,30 @@
     border:none; border-bottom:2px solid #ccc; background:none; font-size:16px; font-weight:700;
     padding:4px 2px; outline:none; color:#111;
   }
-  .player-name-input:focus{ border-bottom-color:#0b1e33; }
+  .player-name-input:focus{ border-bottom-color:#0E2F6B; }
   .team-select{
     border:none; border-bottom:2px solid #ccc; background:none; font-size:14px; font-weight:600;
     padding:5px 2px; outline:none; color:#111; max-width:170px;
   }
-  .team-select:focus{ border-bottom-color:#0b1e33; }
+  .team-select:focus{ border-bottom-color:#0E2F6B; }
   .headshot-thumb{ cursor:pointer; display:inline-block; vertical-align:middle; }
   .headshot-thumb.empty .headshot-placeholder{
-    font-size:13px; font-weight:600; color:#0b5cab; text-decoration:underline;
+    font-size:13px; font-weight:600; color:#17479E; text-decoration:underline;
   }
   .headshot-thumb.has-photo{
-    width:64px; height:64px; border-radius:50%; overflow:hidden; border:3px solid #0b1e33;
+    width:64px; height:64px; border-radius:50%; overflow:hidden; border:3px solid #0E2F6B;
   }
   .headshot-thumb.has-photo img{ width:100%; height:100%; object-fit:cover; }
 
   .extra-col-block{ margin-top:18px; padding-top:18px; border-top:2px dashed #ccc; }
   .extra-col-block .col-label{ font-size:12px; font-weight:800; color:#888; text-transform:uppercase; letter-spacing:.04em; margin-bottom:10px; }
 </style>
+<link rel="stylesheet" href="theme.css">
 </head>
 <body>
 
 <div class="page-nav"><a href="index.html">← Home</a></div>
 <h2 class="pagetitle">FIP- Calculator</h2>
-
-<div style="margin-bottom:16px;">
-  <label style="font-size:13px; font-weight:700; margin-right:8px;">Card Theme:</label>
-  <select id="teamTheme" onchange="applyTeamTheme()" style="padding:7px 10px; border:1px solid #ccc; border-radius:6px; font-size:14px;"></select>
-  <div class="hint" style="margin-top:6px;">Colors the exported graphic's header and accent strip — same colors Stat Card Builder uses for that team. This is separate from each column's own Team field below.</div>
-</div>
 
 <div class="headshot-row">
   <div class="headshot-thumb empty" id="headshotThumb" onclick="document.getElementById('headshotInput').click()">
@@ -113,60 +108,6 @@ const MLB_TEAMS = ["Arizona Diamondbacks","Atlanta Braves","Baltimore Orioles","
 "Oakland Athletics","Philadelphia Phillies","Pittsburgh Pirates","San Diego Padres","San Francisco Giants",
 "Seattle Mariners","St. Louis Cardinals","Tampa Bay Rays","Texas Rangers","Toronto Blue Jays","Washington Nationals"];
 
-// Same color data as statcard.html's LEAGUE_TEAMS, so a theme picked here
-// matches exactly if the JSON is loaded into the Stat Card Builder.
-const TEAM_THEME_COLORS = {
-    "Arizona Diamondbacks": {primary:"#A71930", accent:"#33CCCC", light:"#DBCEAC"},
-    "Atlanta Braves": {primary:"#CE1141", accent:"#13274F", light:"#EAAA00"},
-    "Baltimore Orioles": {primary:"#DF4601", accent:"#000000", light:"#FFD9B3"},
-    "Boston Red Sox": {primary:"#BD3039", accent:"#0C2340", light:"#E3D4AD"},
-    "Chicago Cubs": {primary:"#0E3386", accent:"#CC3433", light:"#C9D8ED"},
-    "Chicago White Sox": {primary:"#27251F", accent:"#C4CED4", light:"#C4CED4"},
-    "Cincinnati Reds": {primary:"#C6011F", accent:"#000000", light:"#E3D4AD"},
-    "Cleveland Guardians": {primary:"#00385D", accent:"#E31937", light:"#C9D8ED"},
-    "Colorado Rockies": {primary:"#33006F", accent:"#C4CED4", light:"#C4CED4"},
-    "Detroit Tigers": {primary:"#0C2340", accent:"#FA4616", light:"#C9D8ED"},
-    "Houston Astros": {primary:"#002D62", accent:"#EB6E1F", light:"#C9D8ED"},
-    "Kansas City Royals": {primary:"#004687", accent:"#BD9B60", light:"#E3D4AD"},
-    "Los Angeles Angels": {primary:"#BA0021", accent:"#003263", light:"#E3D4AD"},
-    "Los Angeles Dodgers": {primary:"#005A9C", accent:"#EF3E42", light:"#C9D8ED"},
-    "Miami Marlins": {primary:"#00A3E0", accent:"#EF3340", light:"#000000"},
-    "Milwaukee Brewers": {primary:"#12284B", accent:"#FFC52F", light:"#FFC52F"},
-    "Minnesota Twins": {primary:"#002B5C", accent:"#D31145", light:"#C9D8ED"},
-    "New York Mets": {primary:"#002D72", accent:"#FF5910", light:"#C9D8ED"},
-    "New York Yankees": {primary:"#003087", accent:"#0C2340", light:"#C9D8ED"},
-    "Oakland Athletics": {primary:"#003831", accent:"#EFB21E", light:"#EFB21E"},
-    "Philadelphia Phillies": {primary:"#E81828", accent:"#002D72", light:"#E3D4AD"},
-    "Pittsburgh Pirates": {primary:"#FDB827", accent:"#27251F", light:"#FDB827"},
-    "San Diego Padres": {primary:"#2F241D", accent:"#FFC425", light:"#A2AAAD"},
-    "San Francisco Giants": {primary:"#FD5A1E", accent:"#27251F", light:"#E3D4AD"},
-    "Seattle Mariners": {primary:"#0C2C56", accent:"#005C5C", light:"#C9D8ED"},
-    "St. Louis Cardinals": {primary:"#C41E3A", accent:"#0C2340", light:"#E3D4AD"},
-    "Tampa Bay Rays": {primary:"#092C5C", accent:"#8FBCE6", light:"#F5D130"},
-    "Texas Rangers": {primary:"#003278", accent:"#C0111F", light:"#C9D8ED"},
-    "Toronto Blue Jays": {primary:"#134A8E", accent:"#1D2D5C", light:"#E8291C"},
-    "Washington Nationals": {primary:"#AB0003", accent:"#14225A", light:"#E3D4AD"}
-};
-// "Default" theme: not a team, so it round-trips as team:'' into Stat Card Builder.
-// FanGraphs green / Baseball Savant teal / Baseball-Reference red (from each site's
-// own brand color, verified via their pages' theme-color meta tags where available).
-const DEFAULT_THEME = {primary:"#50AE26", accent:"#146680", light:"#86081A"};
-
-function refreshTeamThemeDropdown(){
-  const sel = document.getElementById('teamTheme');
-  const prevValue = sel.value;
-  sel.innerHTML = '<option value="__default__">Default</option>' +
-    '<optgroup label="Team Colors">' +
-    Object.keys(TEAM_THEME_COLORS).map(t=>`<option value="${t}">${t}</option>`).join('') +
-    '</optgroup>';
-  sel.value = TEAM_THEME_COLORS[prevValue] ? prevValue : '__default__';
-  applyTeamTheme();
-}
-function applyTeamTheme(){
-  const sel = document.getElementById('teamTheme');
-  window._cardTheme = (sel.value !== '__default__' && TEAM_THEME_COLORS[sel.value]) ? TEAM_THEME_COLORS[sel.value] : DEFAULT_THEME;
-}
-
 const MAX_COLUMNS = 6;
 let extraColumnIndices = [];
 
@@ -174,7 +115,6 @@ function teamOptionsHTML(){
   return '<option value="">Team (optional)</option>' + MLB_TEAMS.map(t=>`<option value="${t}">${t}</option>`).join('');
 }
 document.getElementById('teamName').innerHTML = teamOptionsHTML();
-refreshTeamThemeDropdown();
 
 function val(id){ const el = document.getElementById(id); return el ? (parseFloat(el.value) || 0) : 0; }
 
@@ -286,7 +226,7 @@ function downloadJSON(){
   const state = {
     version: 1,
     title: 'FIP- Comparison',
-    team: (document.getElementById('teamTheme').value === '__default__' ? '' : document.getElementById('teamTheme').value),
+    team: '',
     cardStyle: 'table',
     mainPhoto: null,
     columns: columns.map(c => ({
@@ -392,32 +332,16 @@ function renderGraphicCanvas(title, rows, columns){
   const ctx = canvas.getContext('2d');
   ctx.scale(scale, scale);
 
-  const cardRadius = 20, borderW = 4;
-  function roundRectPath(x, y, w, h, r){
-    ctx.beginPath();
-    ctx.moveTo(x+r, y);
-    ctx.arcTo(x+w, y,   x+w, y+h, r);
-    ctx.arcTo(x+w, y+h, x,   y+h, r);
-    ctx.arcTo(x,   y+h, x,   y,   r);
-    ctx.arcTo(x,   y,   x+w, y,   r);
-    ctx.closePath();
-  }
-
   ctx.fillStyle = '#ffffff'; ctx.fillRect(0,0,width,height);
 
-  roundRectPath(0, 0, width, height, cardRadius);
-  ctx.save();
-  ctx.clip();
-
-  const theme = window._cardTheme || DEFAULT_THEME;
-  ctx.fillStyle = theme.primary; ctx.fillRect(0,0,width,titleHeaderH);
+  ctx.fillStyle = '#0E2F6B'; ctx.fillRect(0,0,width,titleHeaderH);
   ctx.fillStyle = '#ffffff'; ctx.font = 'bold 18px Arial'; ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
   ctx.fillText(title, 16, titleHeaderH/2);
 
-  ctx.fillStyle = theme.accent; ctx.fillRect(0, titleHeaderH, width, accentH);
+  ctx.fillStyle = '#e8823f'; ctx.fillRect(0, titleHeaderH, width, accentH);
 
   const barY = titleHeaderH + accentH;
-  ctx.fillStyle = '#0f0f0f'; ctx.fillRect(0, barY, width, colBarH);
+  ctx.fillStyle = '#111111'; ctx.fillRect(0, barY, width, colBarH);
 
   ctx.fillStyle = '#ffffff'; ctx.font = 'bold 13px Arial'; ctx.textAlign = 'center';
   ctx.fillText('STAT', labelColW/2, barY + colBarH/2);
@@ -456,34 +380,38 @@ function renderGraphicCanvas(title, rows, columns){
   });
 
   let y = barY + colBarH;
-  rows.forEach((row) => {
-    ctx.fillStyle = '#ffffff';
+  rows.forEach((row, i) => {
+    const isResult = row[row.length-1] === true;
+    ctx.fillStyle = isResult ? '#FBE9EB' : (i%2===0 ? '#ffffff' : '#f7f7f7');
     ctx.fillRect(0, y, width, rowH);
 
     ctx.fillStyle = '#111111';
-    ctx.font = 'bold 13px Arial';
-    ctx.textAlign = 'center';
-    ctx.fillText(row[0], labelColW/2, y+rowH/2);
+    ctx.font = isResult ? 'bold 14px Arial' : 'bold 12.5px Arial';
+    ctx.textAlign = 'left';
+    ctx.fillText(row[0], 16, y+rowH/2);
 
     for(let c=0; c<numDataCols; c++){
       const value = row[c+1];
-      const cx0 = labelColW + dataColW*c + dataColW/2;
-      ctx.fillStyle = '#111111';
-      ctx.font = 'bold 13px Arial';
-      ctx.textAlign = 'center';
-      ctx.fillText(value !== undefined ? String(value) : '—', cx0, y+rowH/2);
+      const cx0 = labelColW + dataColW*c;
+      ctx.fillStyle = isResult ? '#C8202F' : '#111111';
+      ctx.font = isResult ? 'bold 15px Arial' : '13px Arial';
+      ctx.textAlign = 'right';
+      ctx.fillText(value !== undefined ? String(value) : '—', cx0+dataColW-16, y+rowH/2);
     }
 
-    ctx.strokeStyle = '#0f0f0f'; ctx.lineWidth = 2;
+    ctx.strokeStyle = '#dddddd'; ctx.lineWidth = 1;
     ctx.beginPath(); ctx.moveTo(0,y+rowH); ctx.lineTo(width,y+rowH); ctx.stroke();
     y += rowH;
   });
 
-  ctx.restore(); // end clip to rounded card shape
+  ctx.strokeStyle = '#dddddd'; ctx.lineWidth = 1;
+  for(let c=0; c<=numDataCols; c++){
+    const x = labelColW + dataColW*c;
+    ctx.beginPath(); ctx.moveTo(x, barY); ctx.lineTo(x, y); ctx.stroke();
+  }
 
-  roundRectPath(borderW/2, borderW/2, width-borderW, height-borderW, cardRadius-borderW/2);
-  ctx.strokeStyle = '#0f0f0f'; ctx.lineWidth = borderW;
-  ctx.stroke();
+  ctx.strokeStyle = '#000000'; ctx.lineWidth = 3;
+  ctx.strokeRect(1.5,1.5,width-3,height-3);
 
   const link = document.createElement('a');
   link.download = title.toLowerCase().replace(/[^a-z0-9]+/g,'-') + '.png';

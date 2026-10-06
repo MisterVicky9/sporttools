@@ -33,8 +33,8 @@
   h2.pagetitle{margin:0 0 16px 0; font-size:22px;}
   .page-nav{ margin:0 0 16px 0; }
   .page-nav a{
-    display:inline-block; font-size:13px; font-weight:600; color:#0b5cab;
-    text-decoration:none; background:#eaf2fb; padding:8px 14px; border-radius:8px;
+    display:inline-block; font-size:13px; font-weight:600; color:#17479E;
+    text-decoration:none; background:#E6EDF8; padding:8px 14px; border-radius:8px;
   }
   .page-nav a:hover{ background:#dbe9fa; }
   .layout{
@@ -204,6 +204,7 @@
   }
   .crop-actions .apply{ background:#2E7D32; color:#fff; }
   .crop-actions .cancel{ background:#888; color:#fff; }
+  .col-team{ font-size:10px; max-width:96px; margin-bottom:3px; }
   .crop-hint{ font-size:12px; color:#888; margin-top:8px; }
 
   .col-thumb{
@@ -253,6 +254,7 @@
   .pctl-rawstat:empty::before{ content:attr(data-placeholder); color:#bbb; font-weight:500; font-size:12px; }
   .pctl-rawstat:focus{ background:rgba(0,0,0,0.06); }
 </style>
+<link rel="stylesheet" href="theme.css">
 </head>
 <body>
 
@@ -711,6 +713,15 @@ function addRow(){
   populateRowSelect();
 }
 
+function colTeamColor(name){
+  const t = TEAMS[name]; if(!t) return null;
+  const lum = c => { const v = parseInt(c.slice(1),16); return (0.299*(v>>16) + 0.587*((v>>8)&255) + 0.114*(v&255))/255; };
+  let c = t.primary;
+  if(lum(c) > 0.6) c = t.accent;
+  if(lum(c) > 0.6) c = '#333333';
+  return c;
+}
+
 function setColColor(n, value){
   document.documentElement.style.setProperty('--col'+n, value);
 }
@@ -746,11 +757,22 @@ function addColumn(){
   swatch.type = 'color';
   swatch.className = 'col-swatch';
   swatch.value = color;
-  swatch.oninput = ()=> setColColor(n, swatch.value);
+  const teamSel = document.createElement('select');
+  teamSel.className = 'col-team';
+  teamSel.title = 'Use a team\'s color for this column';
+  teamSel.innerHTML = '<option value="">Team color\u2026</option>' + document.getElementById('teamSelect').innerHTML;
+  teamSel.value = '';
+  teamSel.onchange = ()=>{
+    const c = colTeamColor(teamSel.value);
+    if(c){ swatch.value = c; setColColor(n, c); }
+    scheduleAutosave();
+  };
+  swatch.oninput = ()=>{ setColColor(n, swatch.value); teamSel.value = ''; };
   const removeBtn = document.createElement('button');
   removeBtn.className = 'col-remove';
   removeBtn.textContent = '×';
   removeBtn.onclick = ()=> removeColumn(n);
+  controls.appendChild(teamSel);
   controls.appendChild(swatch);
   controls.appendChild(removeBtn);
 
@@ -1336,10 +1358,11 @@ cardObserver.observe(cardEl, { childList:true, subtree:true, characterData:true 
 const AUTOSAVE_KEY = 'statCardBuilder_autosave_v1';
 
 function serializeCard(){
-  const state = { version: 1, title: '', team: '', cardStyle: 'table', mainPhoto: null, columns: [], rows: [] };
+  const state = { version: 1, title: '', subtitle: '', team: '', cardStyle: 'table', mainPhoto: null, columns: [], rows: [] };
 
   const h1 = document.querySelector('.header h1');
   state.title = h1 ? h1.textContent : '';
+  const subEl = document.getElementById('statColSubtitle'); state.subtitle = subEl ? subEl.textContent : '';
   state.team = document.getElementById('teamSelect').value;
   state.cardStyle = document.getElementById('cardStyleSelect').value;
 
@@ -1352,8 +1375,10 @@ function serializeCard(){
     const label = td.querySelector('div[contenteditable]');
     const swatch = td.querySelector('input[type=color]');
     const img = td.querySelector('.col-thumb img');
+    const tsel = td.querySelector('select.col-team');
     state.columns.push({
       label: label ? label.textContent : '',
+      team: tsel ? tsel.value : '',
       color: swatch ? swatch.value : '#111111',
       photo: img ? img.src : null
     });
@@ -1394,6 +1419,9 @@ function restoreCard(state){
       document.documentElement.style.setProperty('--light', t.light);
     }
   }
+
+  const subEl = document.getElementById('statColSubtitle');
+  if(subEl && state.subtitle !== undefined) subEl.textContent = state.subtitle;
 
   const mainFrame = document.getElementById('photoFrame');
   if(state.mainPhoto){
@@ -1441,6 +1469,12 @@ function restoreCard(state){
     if(labelDiv) labelDiv.textContent = colData.label;
     const swatch = td.querySelector('input[type=color]');
     if(swatch && colData.color){ swatch.value = colData.color; setColColor(n, colData.color); }
+    const tsel = td.querySelector('select.col-team');
+    if(tsel && colData.team && TEAMS[colData.team]){
+      tsel.value = colData.team;
+      const tc = colTeamColor(colData.team);
+      if(tc && (!colData.color || colData.fromTeam)){ swatch.value = tc; setColColor(n, tc); }
+    }
     if(colData.photo){
       const thumb = td.querySelector('.col-thumb');
       thumb.classList.remove('empty'); thumb.classList.add('has-photo');
@@ -1599,7 +1633,7 @@ function renderCsvRowList(){
     div.innerHTML =
       '<label style="font-size:13px; font-weight:500; display:flex; align-items:center; gap:8px; cursor:pointer;">' +
       '<input type="checkbox" id="csvRow_' + idx + '" onchange="toggleCsvRowSelection(' + idx + ')">' +
-      '<span id="csvRow_' + idx + '_order" style="font-weight:700; color:#0b5cab; width:16px; display:inline-block;"></span>' +
+      '<span id="csvRow_' + idx + '_order" style="font-weight:700; color:#17479E; width:16px; display:inline-block;"></span>' +
       escapeHtml(label) +
       '</label>';
     container.appendChild(div);
@@ -1712,9 +1746,39 @@ document.getElementById('card').addEventListener('input', scheduleAutosave);
 document.getElementById('teamSelect').addEventListener('change', scheduleAutosave);
 
 populateTeamSelect();
+// The two starter columns are static HTML; give them the same per-column team picker.
+document.querySelectorAll('#headerRow td[class^="col-c"]').forEach(td=>{
+  if(td.querySelector('select.col-team')) return;
+  const n = td.className.replace('col-c','');
+  const swatch = td.querySelector('input[type=color]'), controls = td.querySelector('.col-controls');
+  const teamSel = document.createElement('select');
+  teamSel.className = 'col-team';
+  teamSel.title = 'Use a team\'s color for this column';
+  teamSel.innerHTML = '<option value="">Team color\u2026</option>' + document.getElementById('teamSelect').innerHTML;
+  teamSel.value = '';
+  teamSel.onchange = ()=>{ const c = colTeamColor(teamSel.value); if(c){ swatch.value = c; setColColor(n, c); } scheduleAutosave(); };
+  swatch.addEventListener('input', ()=>{ teamSel.value = ''; });
+  controls.insertBefore(teamSel, swatch);
+});
 loadDefaultRows();
 populateRowSelect();
 loadAutosave();
+
+// Card sent from the Vicky+ leaderboards / player pages (statcard.html#vp=...).
+// The previous autosave is kept under a _backup key before being replaced.
+(function loadHandoff(){
+  const m = /[#&]vp=([^&]+)/.exec(location.hash);
+  if(!m) return;
+  try{
+    const b = m[1].replace(/-/g,'+').replace(/_/g,'/');
+    const state = JSON.parse(decodeURIComponent(escape(atob(b + '==='.slice((b.length+3)%4)))));
+    try{ const prev = localStorage.getItem(AUTOSAVE_KEY); if(prev) localStorage.setItem(AUTOSAVE_KEY + '_backup', prev); }catch(e){}
+    (state.columns||[]).forEach(c=>{ c.fromTeam = true; });
+    restoreCard(state);
+    scheduleAutosave();
+  } catch(err){ console.warn('Could not read card from link.', err); }
+  history.replaceState(null, '', location.pathname + location.search);
+})();
 scheduleScaleUpdate();
 </script>
 

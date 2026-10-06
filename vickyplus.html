@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Vicky+ Leaderboards</title>
 <link rel="stylesheet" href="vickyplus.css">
+<link rel="stylesheet" href="theme.css">
 </head>
 <body>
 <div class="page-nav"><a href="index.html">← Home</a></div>
@@ -36,7 +37,7 @@
     </div>
   </div>
 
-  <div class="actions"><button class="btn secondary" id="colsBtn" type="button">Columns</button><button class="btn" id="csvBtn" type="button">Download CSV</button></div>
+  <div class="actions"><button class="btn secondary" id="colsBtn" type="button">Columns</button><button class="btn" id="csvBtn" type="button">Download CSV</button><button class="btn" id="cardBtn" type="button" disabled>Build Stat Card (0/6)</button></div>
   <div id="pickerHost"></div>
   <div class="status" id="status">Loading…</div>
   <div class="tablewrap"><table id="tbl"></table></div>
@@ -49,10 +50,10 @@
 <script>
 (function(){
   var $=VPUI.$, esc=VPUI.esc;
-  var CTX, SC, PK, mode='player', sortKey='V', sortDir='desc', limit=250, shownRows=[], cols=[];
+  var CTX, SC, PK, sel=[], mode='player', sortKey='V', sortDir='desc', limit=250, shownRows=[], cols=[];
 
   function setMode(m){
-    mode=m; limit=250;
+    mode=m; limit=250; sel=[];
     document.querySelectorAll('#modes button').forEach(function(b){ b.classList.toggle('on', b.getAttribute('data-mode')===m); });
     $('seasonRow').classList.toggle('hidden', m==='pj');
     $('splitTeamsBox').classList.toggle('off', m!=='player');
@@ -94,13 +95,35 @@
       return true;
     });
   }
+
+  function updCard(){
+    $('cardBtn').textContent='Build Stat Card ('+sel.length+'/6)'; $('cardBtn').disabled=!sel.length;
+    document.querySelectorAll('#tbl td.sel input').forEach(function(b){ b.disabled=!b.checked && sel.length>=6; });
+  }
+  function buildCard(){
+    var skip={Name:1,Season:1,pitchers:1};
+    var stat=cols.filter(function(c){ return !skip[c.k]; });
+    var multiSeason=sel.some(function(r){ return r.SeasonLabel!==sel[0].SeasonLabel; });
+    var names={}; sel.forEach(function(r){ names[r.Name]=1; });
+    var same=Object.keys(names).length===1, n=sel.length;
+    var lab=function(r){
+      var nm=r.Name; if(mode!=='team' && n>3){ var p=nm.split(' '); nm=p.length>1? p[0].charAt(0)+'. '+p.slice(1).join(' ') : nm; }
+      return same ? (r.SeasonLabel||nm) : nm+(multiSeason&&r.SeasonLabel? ' '+r.SeasonLabel : '');
+    };
+    var title = mode==='team' ? (n===1? sel[0].Name+' Pitching' : 'Team Pitching Comparison')
+              : same ? sel[0].Name : n===1 ? sel[0].Name : 'Pitcher Comparison';
+    var teamSrc = sel[0].Team || sel[0].Name;
+    var st=VPUI.buildCardState(sel.map(function(r){ return {label:lab(r), row:r}; }), stat,
+      {title:title, team:VPUI.teamName(teamSrc), subtitle: mode==='pj' ? 'Projection' : (same||multiSeason ? 'Season' : (mode==='team'?'Team':'Pitcher'))});
+    VPUI.launchCard(st);
+  }
   function render(){
     if(!SC) return;
     var o=opts(); cols=buildCols(o);
     var col=cols.filter(function(c){return c.k===sortKey;})[0];
     if(!col){ sortKey=mode==='pj'?'PV':'V'; sortDir='desc'; col=cols.filter(function(c){return c.k===sortKey;})[0]; }
     var list=VPUI.sortRows(rowsFor(o),col,sortDir); shownRows=list; var top=list.slice(0,limit);
-    VPUI.drawTable({el:$('tbl'), cols:cols, rows:top, sortKey:sortKey, sortDir:sortDir, rank:true, onSort:function(k){
+    VPUI.drawTable({el:$('tbl'), cols:cols, rows:top, sortKey:sortKey, sortDir:sortDir, rank:true, check:{on:function(r){return sel.indexOf(r)>=0;}, off:function(r){return sel.length>=6 && sel.indexOf(r)<0;}}, onSort:function(k){
       var c=cols.filter(function(x){return x.k===k;})[0];
       if(sortKey===k) sortDir=sortDir==='asc'?'desc':'asc'; else { sortKey=k; sortDir=(c.txt||c.lowBest)?'asc':'desc'; }
       render();
@@ -109,7 +132,7 @@
     $('status').textContent=list.length+' '+(mode==='team'?'teams':(o.splitSeasons&&o.from!==o.to&&mode!=='pj'?'pitcher-seasons':'pitchers'))+(list.length>top.length?' (showing top '+top.length+')':'');
     $('more').classList.toggle('hidden', list.length<=top.length);
     $('viewing').textContent = mode==='pj' ? 'Projecting '+(SC.seasons[SC.seasons.length-1]+1)+' from '+SC.seasons[SC.seasons.length-1] : 'Currently viewing seasons between '+o.from+' and '+o.to;
-    $('foot').textContent='';
+    $('foot').textContent=''; updCard();
   }
 
   VP.fetchData('vickyplus-data.json').then(function(data){
@@ -125,6 +148,13 @@
       $(id).addEventListener('input',function(){ if(id==='from'||id==='to') $('single').value=''; limit=250; render(); });
     });
     document.querySelectorAll('#modes button').forEach(function(b){ b.addEventListener('click',function(){ setMode(b.getAttribute('data-mode')); }); });
+    $('cardBtn').addEventListener('click',buildCard);
+    $('tbl').addEventListener('change',function(e){
+      var i=e.target.getAttribute&&e.target.getAttribute('data-i'); if(i===null||i===undefined) return;
+      var r=shownRows[parseInt(i)], k=sel.indexOf(r);
+      if(e.target.checked&&k<0&&sel.length<6) sel.push(r); else if(!e.target.checked&&k>=0) sel.splice(k,1);
+      updCard();
+    });
     $('more').addEventListener('click',function(){ limit=1e9; render(); });
     $('csvBtn').addEventListener('click',function(){ VPUI.downloadCSV(cols,shownRows,'vickyplus_'+mode+'.csv',true); });
     $('tbl').addEventListener('click',function(e){

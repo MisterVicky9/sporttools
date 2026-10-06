@@ -10,7 +10,7 @@
   body{ font-family:'Segoe UI', Arial, sans-serif; background:#e8e8e8; margin:0; padding:24px; color:#222; }
   @media (max-width:600px){ body{ padding:12px; } }
   .page-nav{ margin:0 0 16px 0; }
-  .page-nav a{ display:inline-block; font-size:13px; font-weight:600; color:#0b5cab; text-decoration:none; background:#eaf2fb; padding:8px 14px; border-radius:8px; }
+  .page-nav a{ display:inline-block; font-size:13px; font-weight:600; color:#17479E; text-decoration:none; background:#E6EDF8; padding:8px 14px; border-radius:8px; }
   .page-nav a:hover{ background:#dbe9fa; }
   h2.pagetitle{ margin:0 0 4px 0; font-size:22px; }
   .calc-card{ background:#fff; border-radius:12px; padding:22px; max-width:600px; box-shadow:0 2px 8px rgba(0,0,0,0.12); }
@@ -24,7 +24,7 @@
   .calc-card button{ margin-top:16px; background:#222; color:#fff; border:none; border-radius:6px; padding:11px 20px; font-size:14px; font-weight:600; cursor:pointer; }
   .calc-card button:hover{ background:#000; }
   .calc-card button.secondary{ background:#888; }
-  .toggle-btn{ background:none; border:none; color:#0b5cab; font-size:13px; font-weight:600; cursor:pointer; padding:0; text-decoration:underline; }
+  .toggle-btn{ background:none; border:none; color:#17479E; font-size:13px; font-weight:600; cursor:pointer; padding:0; text-decoration:underline; }
   .result-box{ margin-top:18px; padding:14px 16px; border-radius:8px; background:#f0f7f0; border:1px solid #cfe8cf; display:none; }
   .result-box.show{ display:block; }
   .result-box .headline{ font-size:22px; font-weight:800; color:#1a5c1a; }
@@ -36,35 +36,30 @@
     border:none; border-bottom:2px solid #ccc; background:none; font-size:16px; font-weight:700;
     padding:4px 2px; outline:none; color:#111;
   }
-  .player-name-input:focus{ border-bottom-color:#0b1e33; }
+  .player-name-input:focus{ border-bottom-color:#0E2F6B; }
   .team-select{
     border:none; border-bottom:2px solid #ccc; background:none; font-size:14px; font-weight:600;
     padding:5px 2px; outline:none; color:#111; max-width:170px;
   }
-  .team-select:focus{ border-bottom-color:#0b1e33; }
+  .team-select:focus{ border-bottom-color:#0E2F6B; }
   .headshot-thumb{ cursor:pointer; display:inline-block; vertical-align:middle; }
   .headshot-thumb.empty .headshot-placeholder{
-    font-size:13px; font-weight:600; color:#0b5cab; text-decoration:underline;
+    font-size:13px; font-weight:600; color:#17479E; text-decoration:underline;
   }
   .headshot-thumb.has-photo{
-    width:64px; height:64px; border-radius:50%; overflow:hidden; border:3px solid #0b1e33;
+    width:64px; height:64px; border-radius:50%; overflow:hidden; border:3px solid #0E2F6B;
   }
   .headshot-thumb.has-photo img{ width:100%; height:100%; object-fit:cover; }
 
   .extra-col-block{ margin-top:18px; padding-top:18px; border-top:2px dashed #ccc; }
   .extra-col-block .col-label{ font-size:12px; font-weight:800; color:#888; text-transform:uppercase; letter-spacing:.04em; margin-bottom:10px; }
 </style>
+<link rel="stylesheet" href="theme.css">
 </head>
 <body>
 
 <div class="page-nav"><a href="index.html">← Home</a></div>
 <h2 class="pagetitle">NBA Shooting Efficiency Calculator</h2>
-
-<div style="margin-bottom:16px;">
-  <label style="font-size:13px; font-weight:700; margin-right:8px;">Card Theme:</label>
-  <select id="teamTheme" onchange="applyTeamTheme()" style="padding:7px 10px; border:1px solid #ccc; border-radius:6px; font-size:14px;"></select>
-  <div class="hint" style="margin-top:6px;">Colors the exported graphic's header and accent strip — same colors Stat Card Builder uses for that team. This is separate from each column's own Team field below.</div>
-</div>
 
 <div class="headshot-row">
   <div class="headshot-thumb empty" id="headshotThumb" onclick="document.getElementById('headshotInput').click()">
@@ -112,60 +107,6 @@
 <script>
 const NBA_TEAMS = ["Atlanta Hawks","Boston Celtics","Brooklyn Nets","Charlotte Hornets","Chicago Bulls","Cleveland Cavaliers","Dallas Mavericks","Denver Nuggets","Detroit Pistons","Golden State Warriors","Houston Rockets","Indiana Pacers","LA Clippers","Los Angeles Lakers","Memphis Grizzlies","Miami Heat","Milwaukee Bucks","Minnesota Timberwolves","New Orleans Pelicans","New York Knicks","Oklahoma City Thunder","Orlando Magic","Philadelphia 76ers","Phoenix Suns","Portland Trail Blazers","Sacramento Kings","San Antonio Spurs","Toronto Raptors","Utah Jazz","Washington Wizards"];
 
-// Same color data as statcard.html's LEAGUE_TEAMS, so a theme picked here
-// matches exactly if the JSON is loaded into the Stat Card Builder.
-const TEAM_THEME_COLORS = {
-    "Atlanta Hawks": {primary:"#E03A3E", accent:"#26282A", light:"#C1D32F"},
-    "Boston Celtics": {primary:"#007A33", accent:"#000000", light:"#BA9653"},
-    "Brooklyn Nets": {primary:"#000000", accent:"#707271", light:"#707271"},
-    "Charlotte Hornets": {primary:"#1D1160", accent:"#00788C", light:"#A1A1A4"},
-    "Chicago Bulls": {primary:"#CE1141", accent:"#000000", light:"#CE1141"},
-    "Cleveland Cavaliers": {primary:"#6F263D", accent:"#041E42", light:"#FFB81C"},
-    "Dallas Mavericks": {primary:"#00538C", accent:"#002B5E", light:"#B8C4CA"},
-    "Denver Nuggets": {primary:"#0E2240", accent:"#8B2131", light:"#FEC524"},
-    "Detroit Pistons": {primary:"#C8102E", accent:"#1D42BA", light:"#BEC0C2"},
-    "Golden State Warriors": {primary:"#1D428A", accent:"#000000", light:"#FFC72C"},
-    "Houston Rockets": {primary:"#CE1141", accent:"#000000", light:"#C4CED4"},
-    "Indiana Pacers": {primary:"#002D62", accent:"#000000", light:"#FDBB30"},
-    "LA Clippers": {primary:"#C8102E", accent:"#1D428A", light:"#BEC0C2"},
-    "Los Angeles Lakers": {primary:"#552583", accent:"#000000", light:"#FDB927"},
-    "Memphis Grizzlies": {primary:"#12173F", accent:"#5D76A9", light:"#F5B112"},
-    "Miami Heat": {primary:"#98002E", accent:"#000000", light:"#F9A01B"},
-    "Milwaukee Bucks": {primary:"#00471B", accent:"#000000", light:"#EEE1C6"},
-    "Minnesota Timberwolves": {primary:"#0C2340", accent:"#236192", light:"#78BE20"},
-    "New Orleans Pelicans": {primary:"#0C2340", accent:"#C8102E", light:"#85714D"},
-    "New York Knicks": {primary:"#006BB6", accent:"#000000", light:"#F58426"},
-    "Oklahoma City Thunder": {primary:"#007AC1", accent:"#002D62", light:"#EF3B24"},
-    "Orlando Magic": {primary:"#0077C0", accent:"#000000", light:"#C4CED4"},
-    "Philadelphia 76ers": {primary:"#006BB6", accent:"#002B5C", light:"#ED174C"},
-    "Phoenix Suns": {primary:"#1D1160", accent:"#000000", light:"#E56020"},
-    "Portland Trail Blazers": {primary:"#E03A3E", accent:"#000000", light:"#E03A3E"},
-    "Sacramento Kings": {primary:"#5A2D81", accent:"#000000", light:"#63727A"},
-    "San Antonio Spurs": {primary:"#000000", accent:"#C4CED4", light:"#C4CED4"},
-    "Toronto Raptors": {primary:"#CE1141", accent:"#000000", light:"#A1A1A4"},
-    "Utah Jazz": {primary:"#002B5C", accent:"#000000", light:"#F9A01B"},
-    "Washington Wizards": {primary:"#002B5C", accent:"#000000", light:"#E31837"}
-};
-// "Default" theme: not a team, so it round-trips as team:'' into Stat Card Builder.
-// FanGraphs green / Baseball Savant teal / Baseball-Reference red (from each site's
-// own brand color, verified via their pages' theme-color meta tags where available).
-const DEFAULT_THEME = {primary:"#50AE26", accent:"#146680", light:"#86081A"};
-
-function refreshTeamThemeDropdown(){
-  const sel = document.getElementById('teamTheme');
-  const prevValue = sel.value;
-  sel.innerHTML = '<option value="__default__">Default</option>' +
-    '<optgroup label="Team Colors">' +
-    Object.keys(TEAM_THEME_COLORS).map(t=>`<option value="${t}">${t}</option>`).join('') +
-    '</optgroup>';
-  sel.value = TEAM_THEME_COLORS[prevValue] ? prevValue : '__default__';
-  applyTeamTheme();
-}
-function applyTeamTheme(){
-  const sel = document.getElementById('teamTheme');
-  window._cardTheme = (sel.value !== '__default__' && TEAM_THEME_COLORS[sel.value]) ? TEAM_THEME_COLORS[sel.value] : DEFAULT_THEME;
-}
-
 const MAX_COLUMNS = 6;
 let extraColumnIndices = [];
 let colCounter = 0;
@@ -174,7 +115,6 @@ function teamOptionsHTML(){
   return '<option value="">Team (optional)</option>' + NBA_TEAMS.map(t=>`<option value="${t}">${t}</option>`).join('');
 }
 document.getElementById('teamName').innerHTML = teamOptionsHTML();
-refreshTeamThemeDropdown();
 
 function val(id){ const el = document.getElementById(id); return el ? (parseFloat(el.value) || 0) : 0; }
 
@@ -295,7 +235,7 @@ function downloadJSON(){
   const state = {
     version: 1,
     title: 'NBA Shooting Efficiency',
-    team: (document.getElementById('teamTheme').value === '__default__' ? '' : document.getElementById('teamTheme').value),
+    team: '',
     cardStyle: 'table',
     mainPhoto: null,
     columns: columns.map(c => ({
@@ -390,32 +330,16 @@ function renderGraphicCanvas(title, rows, columns){
   const ctx = canvas.getContext('2d');
   ctx.scale(scale, scale);
 
-  const cardRadius = 20, borderW = 4;
-  function roundRectPath(x, y, w, h, r){
-    ctx.beginPath();
-    ctx.moveTo(x+r, y);
-    ctx.arcTo(x+w, y,   x+w, y+h, r);
-    ctx.arcTo(x+w, y+h, x,   y+h, r);
-    ctx.arcTo(x,   y+h, x,   y,   r);
-    ctx.arcTo(x,   y,   x+w, y,   r);
-    ctx.closePath();
-  }
-
   ctx.fillStyle = '#ffffff'; ctx.fillRect(0,0,width,height);
 
-  roundRectPath(0, 0, width, height, cardRadius);
-  ctx.save();
-  ctx.clip();
-
-  const theme = window._cardTheme || DEFAULT_THEME;
-  ctx.fillStyle = theme.primary; ctx.fillRect(0,0,width,titleHeaderH);
+  ctx.fillStyle = '#0E2F6B'; ctx.fillRect(0,0,width,titleHeaderH);
   ctx.fillStyle = '#ffffff'; ctx.font = 'bold 18px Arial'; ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
   ctx.fillText(title, 16, titleHeaderH/2);
 
-  ctx.fillStyle = theme.accent; ctx.fillRect(0, titleHeaderH, width, accentH);
+  ctx.fillStyle = '#e8823f'; ctx.fillRect(0, titleHeaderH, width, accentH);
 
   const barY = titleHeaderH + accentH;
-  ctx.fillStyle = '#0f0f0f'; ctx.fillRect(0, barY, width, colBarH);
+  ctx.fillStyle = '#111111'; ctx.fillRect(0, barY, width, colBarH);
 
   ctx.fillStyle = '#ffffff'; ctx.font = 'bold 13px Arial'; ctx.textAlign = 'center';
   ctx.fillText('STAT', labelColW/2, barY + colBarH/2);
@@ -454,34 +378,38 @@ function renderGraphicCanvas(title, rows, columns){
   });
 
   let y = barY + colBarH;
-  rows.forEach((row) => {
-    ctx.fillStyle = '#ffffff';
+  rows.forEach((row, i) => {
+    const isResult = row[row.length-1] === true;
+    ctx.fillStyle = isResult ? '#FBE9EB' : (i%2===0 ? '#ffffff' : '#f7f7f7');
     ctx.fillRect(0, y, width, rowH);
 
     ctx.fillStyle = '#111111';
-    ctx.font = 'bold 13px Arial';
-    ctx.textAlign = 'center';
-    ctx.fillText(row[0], labelColW/2, y+rowH/2);
+    ctx.font = isResult ? 'bold 14px Arial' : 'bold 12.5px Arial';
+    ctx.textAlign = 'left';
+    ctx.fillText(row[0], 16, y+rowH/2);
 
     for(let c=0; c<numDataCols; c++){
       const value = row[c+1];
-      const cx0 = labelColW + dataColW*c + dataColW/2;
-      ctx.fillStyle = '#111111';
-      ctx.font = 'bold 13px Arial';
-      ctx.textAlign = 'center';
-      ctx.fillText(value !== undefined ? String(value) : '—', cx0, y+rowH/2);
+      const cx0 = labelColW + dataColW*c;
+      ctx.fillStyle = isResult ? '#C8202F' : '#111111';
+      ctx.font = isResult ? 'bold 15px Arial' : '13px Arial';
+      ctx.textAlign = 'right';
+      ctx.fillText(value !== undefined ? String(value) : '—', cx0+dataColW-16, y+rowH/2);
     }
 
-    ctx.strokeStyle = '#0f0f0f'; ctx.lineWidth = 2;
+    ctx.strokeStyle = '#dddddd'; ctx.lineWidth = 1;
     ctx.beginPath(); ctx.moveTo(0,y+rowH); ctx.lineTo(width,y+rowH); ctx.stroke();
     y += rowH;
   });
 
-  ctx.restore(); // end clip to rounded card shape
+  ctx.strokeStyle = '#dddddd'; ctx.lineWidth = 1;
+  for(let c=0; c<=numDataCols; c++){
+    const x = labelColW + dataColW*c;
+    ctx.beginPath(); ctx.moveTo(x, barY); ctx.lineTo(x, y); ctx.stroke();
+  }
 
-  roundRectPath(borderW/2, borderW/2, width-borderW, height-borderW, cardRadius-borderW/2);
-  ctx.strokeStyle = '#0f0f0f'; ctx.lineWidth = borderW;
-  ctx.stroke();
+  ctx.strokeStyle = '#000000'; ctx.lineWidth = 3;
+  ctx.strokeRect(1.5,1.5,width-3,height-3);
 
   const link = document.createElement('a');
   link.download = title.toLowerCase().replace(/[^a-z0-9]+/g,'-') + '.png';

@@ -1,0 +1,35 @@
+/* Shared site theme: Savant blue (structure), Baseball-Reference red (highlight), FanGraphs green (action / selected). */
+:root{
+  --blue:#17479E; --blue-dark:#0E2F6B; --blue-tint:#E6EDF8; --blue-gray:#5C6B85;
+  --red:#C8202F; --red-dark:#A21A26; --red-tint:#FBE9EB;
+  --green:#4FA82A; --green-dark:#3C8A1E; --green-tint:#EAF5E4;
+}
+body::before{ content:""; position:fixed; top:0; left:0; right:0; height:5px; z-index:9999;
+  background:linear-gradient(90deg,var(--blue) 0 33.34%,var(--red) 33.34% 66.67%,var(--green) 66.67% 100%); }
+a{ color:var(--blue); }
+.page-nav a{ color:var(--blue); background:var(--blue-tint); }
+.page-nav a:hover{ background:#D3E0F4; }
+.toggle-btn{ color:var(--blue) !important; }
+
+/* buttons: blue default, gray-blue secondary, green for the main action */
+button.btn, .controls button, .picker button, .calc-card button{ background:var(--blue); }
+button.btn:hover, .controls button:hover, .picker button:hover, .calc-card button:hover{ background:var(--blue-dark); }
+button.btn.secondary, .controls button.secondary, .calc-card button.secondary{ background:var(--blue-gray); }
+button.btn.secondary:hover, .controls button.secondary:hover, .calc-card button.secondary:hover{ background:#49566D; }
+#cardBtn, #calcBtn, .calc-card button.primary{ background:var(--green); }
+#cardBtn:hover{ background:var(--green-dark); }
+button.btn:disabled{ background:#b5bcc9; }
+
+/* leaderboard tables: blue header, red sorted column, blue links, tinted hover */
+th{ background:var(--blue-dark); } th:hover{ background:var(--blue); }
+th.sorted{ background:var(--red); } th.sorted:hover{ background:var(--red-dark); }
+th.nosort:hover{ background:var(--blue-dark); }
+td.name a{ color:var(--blue); }
+tr:hover td, tr:hover td.name{ background:var(--blue-tint); }
+td.key{ color:var(--red); }
+.seg button.on{ background:var(--green); border-color:var(--green); }
+.status.err{ color:var(--red); }
+
+/* calculators */
+.result-box{ background:var(--green-tint); border-color:#BFE0AE; }
+.player-name-input:focus, .team-select:focus{ border-bottom-color:var(--blue); }

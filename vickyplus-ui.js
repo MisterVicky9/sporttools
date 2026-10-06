@@ -20,14 +20,14 @@ var VPUI = (function(){
   }
   // o: {el, cols, rows, sortKey, sortDir, rank, onSort(k), rowClass(r)}
   function drawTable(o){
-    var h='<thead><tr>'+(o.rank?'<th class="nosort">#</th>':'');
+    var h='<thead><tr>'+(o.check?'<th class="nosort"></th>':'')+(o.rank?'<th class="nosort">#</th>':'');
     o.cols.forEach(function(c){
       var sortable=o.onSort && c.sortable!==false;
       h+='<th class="'+(c.txt?'txt ':'')+(c.k==='Name'?'name ':'')+(c.k===o.sortKey?'sorted ':'')+(sortable?'':'nosort')+'" data-k="'+esc(c.k)+'">'+esc(c.label)+(c.k===o.sortKey?(o.sortDir==='asc'?' ▲':' ▼'):'')+'</th>';
     });
     h+='</tr></thead><tbody>';
     o.rows.forEach(function(r,i){
-      h+='<tr'+(o.rowClass&&o.rowClass(r)?' class="'+o.rowClass(r)+'"':'')+'>'+(o.rank?'<td class="rank">'+(i+1)+'</td>':'');
+      h+='<tr'+(o.rowClass&&o.rowClass(r)?' class="'+o.rowClass(r)+'"':'')+'>'+(o.check?'<td class="sel"><input type="checkbox" data-i="'+i+'"'+(o.check.on(r)?' checked':'')+(o.check.off(r)?' disabled':'')+' aria-label="Select row"></td>':'')+(o.rank?'<td class="rank">'+(i+1)+'</td>':'');
       o.cols.forEach(function(c){
         var v=c.get(r), s=c.fmt? c.fmt(v,r) : (v==null?'':v);
         s = c.html ? c.html(r,s) : esc(s);
@@ -87,5 +87,31 @@ var VPUI = (function(){
     var names=ctx.feats.map(function(f){return f.key;}).join(', ');
     return 'Vicky+ is a composite of '+names+', weighted and scaled so 100 = league average (weighted by innings pitched) and 20 points = 1 standard deviation within each season.'+(ctx.full?'':' Add Z-Contact% and SwStr% to the export for the full six-input version.');
   }
-  return {$:$, esc:esc, dataCol:dataCol, sortRows:sortRows, drawTable:drawTable, downloadCSV:downloadCSV, Picker:Picker, PICKER_HTML:PICKER_HTML, inputsNote:inputsNote};
+
+  // ---- Stat card handoff (opens statcard.html with a prebuilt card) ----
+  var MLB_NAMES={ARI:'Arizona Diamondbacks',ATL:'Atlanta Braves',BAL:'Baltimore Orioles',BOS:'Boston Red Sox',CHC:'Chicago Cubs',CHW:'Chicago White Sox',CWS:'Chicago White Sox',CIN:'Cincinnati Reds',CLE:'Cleveland Guardians',COL:'Colorado Rockies',DET:'Detroit Tigers',HOU:'Houston Astros',KCR:'Kansas City Royals',KC:'Kansas City Royals',LAA:'Los Angeles Angels',LAD:'Los Angeles Dodgers',MIA:'Miami Marlins',MIL:'Milwaukee Brewers',MIN:'Minnesota Twins',NYM:'New York Mets',NYY:'New York Yankees',OAK:'Oakland Athletics',ATH:'Oakland Athletics',PHI:'Philadelphia Phillies',PIT:'Pittsburgh Pirates',SDP:'San Diego Padres',SD:'San Diego Padres',SEA:'Seattle Mariners',SFG:'San Francisco Giants',SF:'San Francisco Giants',STL:'St. Louis Cardinals',TBR:'Tampa Bay Rays',TB:'Tampa Bay Rays',TEX:'Texas Rangers',TOR:'Toronto Blue Jays',WSN:'Washington Nationals',WSH:'Washington Nationals'};
+  var CARD_COLORS=['#111111','#A71930','#5A5A5A','#1A5FB4','#2E7D32','#6A1B9A'];
+  function teamName(s){
+    if(!s) return '';
+    var t=String(s).split(/[^A-Za-z]+/);
+    for(var i=0;i<t.length;i++) if(MLB_NAMES[t[i].toUpperCase()]) return MLB_NAMES[t[i].toUpperCase()];
+    return '';
+  }
+  // columns: [{label, row}] (max 6); statCols: [{label,get,fmt}]; opts: {title, team, subtitle}
+  function buildCardState(columns, statCols, opts){
+    columns=columns.slice(0,6);
+    var rows=statCols.map(function(c){
+      return {label:c.label, isPctl:false, values:columns.map(function(k){
+        var v=c.get(k.row), s=c.fmt? c.fmt(v,k.row) : (v==null?'':String(v));
+        return {value:(s===''||s==null)?'—':String(s), rawstat:''};
+      })};
+    });
+    return {version:1, title:opts.title||'', team:opts.team||'', subtitle:opts.subtitle||'', cardStyle:'table', mainPhoto:null,
+      columns:columns.map(function(k,i){ return {label:k.label, team:(k.team!=null?k.team:teamName((k.row&&(k.row.Team||k.row.Name))||'')), color:CARD_COLORS[i]||'#333333', photo:null}; }), rows:rows};
+  }
+  function launchCard(state){
+    var b=btoa(unescape(encodeURIComponent(JSON.stringify(state)))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+    location.href='statcard.html#vp='+b;
+  }
+  return {$:$, esc:esc, dataCol:dataCol, sortRows:sortRows, drawTable:drawTable, downloadCSV:downloadCSV, Picker:Picker, PICKER_HTML:PICKER_HTML, inputsNote:inputsNote, teamName:teamName, buildCardState:buildCardState, launchCard:launchCard};
 })();
