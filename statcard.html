@@ -1,0 +1,1722 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Sports Stat Card Builder</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<style>
+  :root{
+    --primary:#A71930;
+    --accent:#33CCCC;
+    --light:#DBCEAC;
+    --col1:#111111;
+    --col2:#A71930;
+    --col3:#5A5A5A;
+    --col4:#1A5FB4;
+    --col5:#2E7D32;
+    --col6:#6A1B9A;
+  }
+  *{box-sizing:border-box;}
+  html, body{ max-width:100%; overflow-x:hidden; }
+  body{
+    font-family:'Segoe UI', Arial, sans-serif;
+    background:#e8e8e8;
+    margin:0;
+    padding:24px;
+    color:#222;
+  }
+  @media (max-width:600px){
+    body{ padding:12px; }
+    h2.pagetitle{ font-size:18px; }
+  }
+  h2.pagetitle{margin:0 0 16px 0; font-size:22px;}
+  .page-nav{ margin:0 0 16px 0; }
+  .page-nav a{
+    display:inline-block; font-size:13px; font-weight:600; color:#0b5cab;
+    text-decoration:none; background:#eaf2fb; padding:8px 14px; border-radius:8px;
+  }
+  .page-nav a:hover{ background:#dbe9fa; }
+  .layout{
+    display:flex;
+    gap:28px;
+    align-items:flex-start;
+    flex-wrap:wrap;
+  }
+  .controls{
+    flex:1 1 340px;
+    min-width:260px;
+    max-width:400px;
+    background:#fff;
+    border-radius:12px;
+    padding:18px;
+    box-shadow:0 2px 8px rgba(0,0,0,0.12);
+  }
+  .controls h3{margin-top:0; font-size:15px; text-transform:uppercase; letter-spacing:.05em; color:#555;}
+  .controls label{display:block; font-size:13px; font-weight:600; margin:14px 0 4px;}
+  .controls select, .controls input[type=text]{
+    width:100%; padding:8px; border:1px solid #ccc; border-radius:6px; font-size:14px;
+  }
+  .controls button{
+    cursor:pointer; border:none; border-radius:6px; padding:9px 14px;
+    font-size:13px; font-weight:600; margin-top:10px; margin-right:6px;
+    background:#222; color:#fff;
+  }
+  .controls button.secondary{background:#888;}
+  .controls button.export{background:var(--primary); width:100%; font-size:15px; padding:12px;}
+  .controls label{display:block; font-size:12px; font-weight:600; margin:10px 0 3px; color:#444;}
+  .controls select{ margin-top:0; }
+  .upload-box{
+    border:2px dashed #bbb; border-radius:8px; padding:14px; text-align:center;
+    font-size:13px; color:#777; margin-top:6px; cursor:pointer;
+  }
+  .hint{font-size:12px; color:#888; margin-top:4px; line-height:1.4;}
+
+  .card-wrapper{ background:#e8e8e8; padding:10px; }
+  #card{
+    width:920px;
+    background:#fff;
+    border:4px solid #0f0f0f;
+    border-radius:30px;
+    overflow:hidden;
+    position:relative;
+    box-shadow:0 4px 16px rgba(0,0,0,0.18);
+    transform-origin: top left;
+  }
+  .header{
+    background:var(--primary);
+    padding:22px 34px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:20px;
+  }
+  .header h1{
+    color:#fff;
+    font-size:38px;
+    margin:0;
+    font-weight:800;
+    outline:none;
+    flex:1 1 auto;
+    min-width:0;
+  }
+  .accent-strip{ height:9px; background:var(--accent); }
+  .photo-frame{
+    flex-shrink:0;
+    cursor:pointer;
+  }
+  .photo-frame.empty{
+    width:auto; height:auto;
+  }
+  .photo-frame.empty .placeholder{
+    font-size:13px; color:#fff; text-decoration:underline; font-weight:600;
+    opacity:0.85; white-space:nowrap;
+  }
+  .photo-frame.has-photo{
+    width:140px; height:140px;
+    border-radius:14px;
+    background:#fff;
+    border:4px solid #0f0f0f;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    overflow:hidden;
+  }
+  .photo-frame img{
+    width:100%; height:100%; object-fit:cover; object-position:center 30%;
+  }
+  table{
+    width:100%; border-collapse:collapse;
+  }
+  thead td{
+    background:#0f0f0f; color:#fff; font-weight:800; text-align:center;
+    padding:16px 6px; font-size:16px; position:relative;
+  }
+  thead td.stat-col{ text-align:center; }
+  .stat-col-subtitle{ font-size:10px; font-weight:600; color:#999; margin-top:3px; letter-spacing:.03em; text-transform:uppercase; }
+  .stat-col-subtitle:empty{ margin-top:0; }
+  tbody td{
+    text-align:center; padding:13px 6px; font-weight:700; font-size:16px;
+    border-bottom:2px solid #0f0f0f; border-right: none;
+  }
+  tbody td.label-cell{ font-weight:700; }
+  td[contenteditable], th[contenteditable]{ outline:none; }
+  td[contenteditable]:hover, th[contenteditable]:hover{ background:rgba(0,0,0,0.04); }
+  tbody td.col-c1{ color:var(--col1); }
+  tbody td.col-c2{ color:var(--col2); }
+  tbody td.col-c3{ color:var(--col3); }
+  tbody td.col-c4{ color:var(--col4); }
+  tbody td.col-c5{ color:var(--col5); }
+  tbody td.col-c6{ color:var(--col6); }
+  thead td.col-c1, thead td.col-c2, thead td.col-c3,
+  thead td.col-c4, thead td.col-c5, thead td.col-c6{ color:#fff; }
+
+  .col-controls{
+    display:flex; align-items:center; justify-content:center; gap:8px; margin-top:6px;
+  }
+  .col-swatch{
+    width:22px; height:22px; border:none; padding:0; cursor:pointer; border-radius:4px;
+  }
+  .col-remove{
+    background:#c0392b; color:#fff; border:none; border-radius:50%;
+    width:20px; height:20px; font-size:12px; cursor:pointer; line-height:1;
+    display:flex; align-items:center; justify-content:center; padding:0;
+  }
+  .row-remove{
+    background:#c0392b; color:#fff; border:none; border-radius:50%;
+    width:22px; height:22px; font-size:12px; cursor:pointer; line-height:1;
+  }
+  .row-ctrl-col{ width:34px; }
+  .no-export{ }
+  #photoInput{ display:none; }
+
+  .crop-modal{
+    position:fixed; inset:0; background:rgba(0,0,0,0.6);
+    display:flex; align-items:center; justify-content:center;
+    z-index:999;
+  }
+  .crop-panel{
+    background:#fff; border-radius:12px; padding:22px;
+    display:flex; flex-direction:column; align-items:center;
+    box-shadow:0 8px 30px rgba(0,0,0,0.3);
+    max-width:92vw;
+    max-height:92vh;
+  }
+  .crop-panel h3{ margin:0 0 14px 0; font-size:16px; text-align:center; }
+  .crop-stage{
+    width:320px; height:320px; overflow:hidden; position:relative;
+    background:#222; border-radius:10px; cursor:grab;
+    touch-action:none;
+    max-width:100%;
+  }
+  .crop-stage.dragging{ cursor:grabbing; }
+  .crop-stage img{
+    position:absolute; top:0; left:0; max-width:none; max-height:none;
+    user-select:none; -webkit-user-drag:none;
+  }
+  .crop-controls{
+    display:flex; align-items:center; gap:10px; margin-top:16px; width:100%; max-width:320px;
+  }
+  .crop-controls input[type=range]{ flex:1; }
+  .crop-actions{ margin-top:16px; display:flex; gap:10px; }
+  .crop-actions button{
+    padding:10px 18px; border:none; border-radius:6px; font-weight:600; cursor:pointer;
+  }
+  .crop-actions .apply{ background:#2E7D32; color:#fff; }
+  .crop-actions .cancel{ background:#888; color:#fff; }
+  .crop-hint{ font-size:12px; color:#888; margin-top:8px; }
+
+  .col-thumb{
+    cursor:pointer;
+    margin:0 auto 6px auto;
+  }
+  .col-thumb.empty{
+    width:auto; height:auto;
+  }
+  .col-thumb.empty .thumb-placeholder{
+    font-size:12px; color:#fff; text-decoration:underline; font-weight:600;
+    opacity:0.85; white-space:nowrap; line-height:normal;
+  }
+  .col-thumb.has-photo{
+    width:52px; height:52px; border-radius:10px; background:#fff;
+    border:3px solid #0f0f0f; overflow:hidden;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .col-thumb img{ width:100%; height:100%; object-fit:cover; }
+
+  /* ---- Percentile Bars card style (Savant-style) ---- */
+  #card.percentile-view .col-thumb.has-photo,
+  #card.percentile-view .photo-frame.has-photo{
+    border-radius:50%;
+  }
+  #card.percentile-view thead td.stat-col{ text-align:center; }
+  tr.pctl-row td[class^="col-c"]{
+    padding:0;
+  }
+  .pctl-wrap{ display:flex; align-items:center; gap:8px; padding:0 6px; height:100%; }
+  .pctl-track{
+    flex:1; position:relative; height:26px; margin:11.5px 0; border-radius:14px;
+    background:#d7e9e7; cursor:pointer; touch-action:none;
+  }
+  .pctl-fill{ position:absolute; left:0; top:0; bottom:0; border-radius:14px; pointer-events:none; }
+  .pctl-badge{
+    position:absolute; top:50%; width:26px; height:26px; border-radius:50%;
+    color:#fff; font-weight:800; font-size:12px;
+    display:flex; align-items:center; justify-content:center;
+    border:2px solid #fff; box-shadow:0 1px 3px rgba(0,0,0,0.35);
+    outline:none; transform:translateY(-50%); cursor:grab;
+  }
+  .pctl-rawstat{
+    min-width:38px; text-align:center; font-weight:700; font-size:14px;
+    outline:none; padding:2px 4px; border-radius:5px; flex-shrink:0;
+  }
+  .pctl-rawstat:empty::before{ content:attr(data-placeholder); color:#bbb; font-weight:500; font-size:12px; }
+  .pctl-rawstat:focus{ background:rgba(0,0,0,0.06); }
+</style>
+</head>
+<body>
+
+<h2 class="pagetitle">Sports Stat Card Builder</h2>
+<div class="page-nav"><a href="index.html">← Home</a></div>
+
+<div class="layout">
+  <div class="controls no-export-panel">
+    <h3>Team Theme</h3>
+    <select id="teamSelect"></select>
+
+    <h3 style="margin-top:20px;">Header Photo</h3>
+    <div class="upload-box" onclick="triggerPhotoUpload('main')">
+      Click to upload the header photo (PNG/JPG)
+    </div>
+    <input type="file" id="photoInput" accept="image/*">
+
+    <h3 style="margin-top:20px;">Rows &amp; Columns</h3>
+    <button onclick="addRow()">+ Add Row</button>
+    <button class="secondary" onclick="addColumn()">+ Add Column</button>
+    <div class="hint">Click any title, header, or stat cell directly on the card to edit it. Each column has its own small photo box for a headshot — click it to add or replace that player's photo, great for comparing multiple players side by side. Use the color square under each label to recolor that column's numbers. Hover a row to see its remove (×) button.</div>
+
+    <h3 style="margin-top:20px;">Stat Template</h3>
+    <select id="templateSelect">
+      <option value="blank">Blank (1 row)</option>
+      <option value="slash">Slash Line (AVG/OBP/SLG/OPS)</option>
+      <option value="discipline">Plate Discipline (BB%/K%/BB:K/K-BB%/TTO%/HR%)</option>
+      <option value="full">Full Sabermetric (all of the above + ISO/BABIP/wOBA)</option>
+      <option value="pitchingBasic">Pitching — Basic (ERA/W/L/IP/SO/BB/WHIP)</option>
+      <option value="pitchingAdvanced">Pitching — Advanced (K/9, BB/9, FIP, ERA-, FIP-, etc.)</option>
+      <option value="pitchingBlend">Pitching — Blend (ERA, FIP, IP, K/9, BB/9, HR/9, K-BB%, ERA-, FIP-)</option>
+      <option value="statcast">Statcast Percentile Comparison (blank)</option>
+    </select>
+    <button onclick="loadTemplate()">Load Template</button>
+    <div class="hint">Loading a template replaces all current rows with that template's stat labels (values reset to 0) — it keeps your current columns as-is. The Statcast template auto-switches the card to Percentile Bars style below and starts blank — add your own stat rows with any label you want.</div>
+
+    <h3 style="margin-top:20px;">Card Style</h3>
+    <select id="cardStyleSelect" onchange="setCardStyle(this.value)">
+      <option value="table">Table (rows &amp; columns)</option>
+      <option value="percentile">Percentile Bars (Savant-style)</option>
+    </select>
+    <div class="hint">In Percentile Bars mode, each row shows a small editable number next to the bar for the actual stat value (e.g. ".270" or "94 mph"), plus the percentile bar itself — drag anywhere on the bar to slide it to a value, or click the badge and type a number directly; both stay in sync automatically. Everything here is entered by hand; nothing is calculated for you.</div>
+
+    <h3 style="margin-top:20px;">Convert a Single Row</h3>
+    <label>Row (identified by its left-side label)</label>
+    <select id="rowSelect"></select>
+    <button onclick="makeRowBubble()">Make Row a Savant Bubble</button>
+    <button class="secondary" onclick="makeRowBaseStat()">Convert Row to Base Stat</button>
+    <div class="hint" id="rowConvertStatus" style="margin-top:0;">Pick a row above, then choose one of the two buttons — no confirmation popup, it applies right away. Rows can be mixed: some as plain numbers, others as percentile bars, on the same card.</div>
+
+    <h3 style="margin-top:20px;">Save &amp; Load</h3>
+    <div class="hint" style="margin-top:0;" id="autosaveStatus">This card auto-saves in your browser as you work — reopening this page later picks up right where you left off.</div>
+    <button onclick="exportProgress()">Export Progress (.json)</button>
+    <button class="secondary" onclick="document.getElementById('importFileInput').click()">Load Progress</button>
+    <input type="file" id="importFileInput" accept=".json,application/json" style="display:none;">
+    <div class="hint">Export gives you a small file with the whole card — every row, column, color, team, and photo. Email it to yourself or save it anywhere, then use "Load Progress" on any device/browser to pick up exactly where you left off.</div>
+    <button class="secondary" onclick="clearAutosave()">Clear Autosave / Start Fresh</button>
+
+    <h3 style="margin-top:20px;">Import CSV</h3>
+    <button class="secondary" onclick="document.getElementById('csvFileInput').click()">Choose CSV File</button>
+    <input type="file" id="csvFileInput" accept=".csv,text/csv" style="display:none;">
+    <div class="hint" style="margin-top:6px;">CSV should have players as rows and stats as columns (a typical spreadsheet export) — the first column in each row is used as that player's column name.</div>
+    <div id="csvMapUI" style="display:none; margin-top:10px;">
+      <div class="hint" style="margin-top:0;">Check which rows become columns, in the order you want them (up to 6). Each CSV column (other than the first) becomes one new stat row, with every selected player's value placed in that same row.</div>
+      <div id="csvRowList" style="max-height:220px; overflow-y:auto; border:1px solid #ddd; border-radius:6px; padding:8px; margin-top:8px; background:#fafafa;"></div>
+      <button onclick="importCsvSelection()" style="margin-top:10px;">Add Selected as Columns</button>
+      <button class="secondary" onclick="cancelCsvImport()">Cancel</button>
+    </div>
+
+    <h3 style="margin-top:20px;">Export</h3>
+    <button class="export" onclick="exportPNG()">Download PNG</button>
+    <div class="hint">Exports exactly what's shown on the card — controls, buttons, and swatches are excluded automatically.</div>
+  </div>
+
+  <div class="card-wrapper">
+    <div id="card">
+      <div class="header">
+        <h1 contenteditable="true">PLAYER NAME</h1>
+        <div class="photo-frame empty" id="photoFrame" onclick="triggerPhotoUpload('main')">
+          <span class="placeholder no-export">+ Add Photo</span>
+        </div>
+      </div>
+      <div class="accent-strip"></div>
+      <table id="statTable">
+        <thead>
+          <tr id="headerRow">
+            <td class="stat-col" id="statColHeader">
+              <div contenteditable="true" id="statColLabel">STAT</div>
+              <div class="stat-col-subtitle" id="statColSubtitle"></div>
+            </td>
+            <td class="col-c1">
+              <div class="col-thumb empty" data-col="1" onclick="triggerPhotoUpload(1)"><span class="thumb-placeholder no-export">+ Photo</span></div>
+              <div contenteditable="true">COLUMN 1</div>
+              <div class="col-controls no-export">
+                <input type="color" class="col-swatch" value="#111111" oninput="setColColor(1,this.value)">
+                <button class="col-remove" onclick="removeColumn(1)">×</button>
+              </div>
+            </td>
+            <td class="col-c2">
+              <div class="col-thumb empty" data-col="2" onclick="triggerPhotoUpload(2)"><span class="thumb-placeholder no-export">+ Photo</span></div>
+              <div contenteditable="true">COLUMN 2</div>
+              <div class="col-controls no-export">
+                <input type="color" class="col-swatch" value="#A71930" oninput="setColColor(2,this.value)">
+                <button class="col-remove" onclick="removeColumn(2)">×</button>
+              </div>
+            </td>
+            <td class="row-ctrl-col no-export"></td>
+          </tr>
+        </thead>
+        <tbody id="statBody">
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="crop-modal" id="cropModal" style="display:none;">
+  <div class="crop-panel">
+    <h3>Drag to reposition, use the slider to zoom</h3>
+    <div class="crop-stage" id="cropStage">
+      <img id="cropImg" src="">
+    </div>
+    <div class="crop-controls">
+      <span style="font-size:12px;">Zoom</span>
+      <input type="range" id="zoomSlider" min="1" max="4" step="0.01" value="1">
+    </div>
+    <div class="crop-actions">
+      <button class="apply" onclick="applyCrop()">Apply Crop</button>
+      <button class="cancel" onclick="closeCropModal()">Cancel</button>
+    </div>
+    <div class="crop-hint">The square shown here is exactly what will appear in the photo frame.</div>
+  </div>
+</div>
+
+<script>
+const LEAGUE_TEAMS = {
+  "MLB": {
+    "Arizona Diamondbacks": {primary:"#A71930", accent:"#33CCCC", light:"#DBCEAC"},
+    "Atlanta Braves": {primary:"#CE1141", accent:"#13274F", light:"#EAAA00"},
+    "Baltimore Orioles": {primary:"#DF4601", accent:"#000000", light:"#FFD9B3"},
+    "Boston Red Sox": {primary:"#BD3039", accent:"#0C2340", light:"#E3D4AD"},
+    "Chicago Cubs": {primary:"#0E3386", accent:"#CC3433", light:"#C9D8ED"},
+    "Chicago White Sox": {primary:"#27251F", accent:"#C4CED4", light:"#C4CED4"},
+    "Cincinnati Reds": {primary:"#C6011F", accent:"#000000", light:"#E3D4AD"},
+    "Cleveland Guardians": {primary:"#00385D", accent:"#E31937", light:"#C9D8ED"},
+    "Colorado Rockies": {primary:"#33006F", accent:"#C4CED4", light:"#C4CED4"},
+    "Detroit Tigers": {primary:"#0C2340", accent:"#FA4616", light:"#C9D8ED"},
+    "Houston Astros": {primary:"#002D62", accent:"#EB6E1F", light:"#C9D8ED"},
+    "Kansas City Royals": {primary:"#004687", accent:"#BD9B60", light:"#E3D4AD"},
+    "Los Angeles Angels": {primary:"#BA0021", accent:"#003263", light:"#E3D4AD"},
+    "Los Angeles Dodgers": {primary:"#005A9C", accent:"#EF3E42", light:"#C9D8ED"},
+    "Miami Marlins": {primary:"#00A3E0", accent:"#EF3340", light:"#000000"},
+    "Milwaukee Brewers": {primary:"#12284B", accent:"#FFC52F", light:"#FFC52F"},
+    "Minnesota Twins": {primary:"#002B5C", accent:"#D31145", light:"#C9D8ED"},
+    "New York Mets": {primary:"#002D72", accent:"#FF5910", light:"#C9D8ED"},
+    "New York Yankees": {primary:"#003087", accent:"#0C2340", light:"#C9D8ED"},
+    "Oakland Athletics": {primary:"#003831", accent:"#EFB21E", light:"#EFB21E"},
+    "Philadelphia Phillies": {primary:"#E81828", accent:"#002D72", light:"#E3D4AD"},
+    "Pittsburgh Pirates": {primary:"#FDB827", accent:"#27251F", light:"#FDB827"},
+    "San Diego Padres": {primary:"#2F241D", accent:"#FFC425", light:"#A2AAAD"},
+    "San Francisco Giants": {primary:"#FD5A1E", accent:"#27251F", light:"#E3D4AD"},
+    "Seattle Mariners": {primary:"#0C2C56", accent:"#005C5C", light:"#C9D8ED"},
+    "St. Louis Cardinals": {primary:"#C41E3A", accent:"#0C2340", light:"#E3D4AD"},
+    "Tampa Bay Rays": {primary:"#092C5C", accent:"#8FBCE6", light:"#F5D130"},
+    "Texas Rangers": {primary:"#003278", accent:"#C0111F", light:"#C9D8ED"},
+    "Toronto Blue Jays": {primary:"#134A8E", accent:"#1D2D5C", light:"#E8291C"},
+    "Washington Nationals": {primary:"#AB0003", accent:"#14225A", light:"#E3D4AD"}
+  },
+  "NFL": {
+    "Arizona Cardinals": {primary:"#97233F", accent:"#000000", light:"#FFB612"},
+    "Atlanta Falcons": {primary:"#A71930", accent:"#000000", light:"#A5ACAF"},
+    "Baltimore Ravens": {primary:"#241773", accent:"#000000", light:"#9E7C0C"},
+    "Buffalo Bills": {primary:"#00338D", accent:"#C60C30", light:"#C9D8ED"},
+    "Carolina Panthers": {primary:"#0085CA", accent:"#101820", light:"#BFC0BF"},
+    "Chicago Bears": {primary:"#0B162A", accent:"#C83803", light:"#C9D8ED"},
+    "Cincinnati Bengals": {primary:"#FB4F14", accent:"#000000", light:"#FB4F14"},
+    "Cleveland Browns": {primary:"#311D00", accent:"#FF3C00", light:"#FF3C00"},
+    "Dallas Cowboys": {primary:"#041E42", accent:"#869397", light:"#B0B7BC"},
+    "Denver Broncos": {primary:"#FB4F14", accent:"#002244", light:"#FB4F14"},
+    "Detroit Lions": {primary:"#0076B6", accent:"#B0B7BC", light:"#C9D8ED"},
+    "Green Bay Packers": {primary:"#203731", accent:"#FFB612", light:"#FFB612"},
+    "Houston Texans": {primary:"#03202F", accent:"#A71930", light:"#A71930"},
+    "Indianapolis Colts": {primary:"#002C5F", accent:"#A2AAAD", light:"#C9D8ED"},
+    "Jacksonville Jaguars": {primary:"#101820", accent:"#D7A22A", light:"#006778"},
+    "Kansas City Chiefs": {primary:"#E31837", accent:"#FFB81C", light:"#FFB81C"},
+    "Las Vegas Raiders": {primary:"#000000", accent:"#A5ACAF", light:"#A5ACAF"},
+    "Los Angeles Chargers": {primary:"#0080C6", accent:"#FFC20E", light:"#FFC20E"},
+    "Los Angeles Rams": {primary:"#003594", accent:"#FFA300", light:"#FFA300"},
+    "Miami Dolphins": {primary:"#008E97", accent:"#FC4C02", light:"#005778"},
+    "Minnesota Vikings": {primary:"#4F2683", accent:"#FFC62F", light:"#FFC62F"},
+    "New England Patriots": {primary:"#002244", accent:"#C60C30", light:"#B0B7BC"},
+    "New Orleans Saints": {primary:"#D3BC8D", accent:"#101820", light:"#D3BC8D"},
+    "New York Giants": {primary:"#0B2265", accent:"#A71930", light:"#A71930"},
+    "New York Jets": {primary:"#125740", accent:"#000000", light:"#125740"},
+    "Philadelphia Eagles": {primary:"#004C54", accent:"#A5ACAF", light:"#ACC0C6"},
+    "Pittsburgh Steelers": {primary:"#FFB612", accent:"#101820", light:"#FFB612"},
+    "San Francisco 49ers": {primary:"#AA0000", accent:"#B3995D", light:"#B3995D"},
+    "Seattle Seahawks": {primary:"#002244", accent:"#69BE28", light:"#69BE28"},
+    "Tampa Bay Buccaneers": {primary:"#D50A0A", accent:"#34302B", light:"#FF7900"},
+    "Tennessee Titans": {primary:"#0C2340", accent:"#4B92DB", light:"#C8102E"},
+    "Washington Commanders": {primary:"#5A1414", accent:"#FFB612", light:"#FFB612"}
+  },
+  "NBA": {
+    "Atlanta Hawks": {primary:"#E03A3E", accent:"#26282A", light:"#C1D32F"},
+    "Boston Celtics": {primary:"#007A33", accent:"#000000", light:"#BA9653"},
+    "Brooklyn Nets": {primary:"#000000", accent:"#707271", light:"#707271"},
+    "Charlotte Hornets": {primary:"#1D1160", accent:"#00788C", light:"#A1A1A4"},
+    "Chicago Bulls": {primary:"#CE1141", accent:"#000000", light:"#CE1141"},
+    "Cleveland Cavaliers": {primary:"#6F263D", accent:"#041E42", light:"#FFB81C"},
+    "Dallas Mavericks": {primary:"#00538C", accent:"#002B5E", light:"#B8C4CA"},
+    "Denver Nuggets": {primary:"#0E2240", accent:"#8B2131", light:"#FEC524"},
+    "Detroit Pistons": {primary:"#C8102E", accent:"#1D42BA", light:"#BEC0C2"},
+    "Golden State Warriors": {primary:"#1D428A", accent:"#000000", light:"#FFC72C"},
+    "Houston Rockets": {primary:"#CE1141", accent:"#000000", light:"#C4CED4"},
+    "Indiana Pacers": {primary:"#002D62", accent:"#000000", light:"#FDBB30"},
+    "LA Clippers": {primary:"#C8102E", accent:"#1D428A", light:"#BEC0C2"},
+    "Los Angeles Lakers": {primary:"#552583", accent:"#000000", light:"#FDB927"},
+    "Memphis Grizzlies": {primary:"#12173F", accent:"#5D76A9", light:"#F5B112"},
+    "Miami Heat": {primary:"#98002E", accent:"#000000", light:"#F9A01B"},
+    "Milwaukee Bucks": {primary:"#00471B", accent:"#000000", light:"#EEE1C6"},
+    "Minnesota Timberwolves": {primary:"#0C2340", accent:"#236192", light:"#78BE20"},
+    "New Orleans Pelicans": {primary:"#0C2340", accent:"#C8102E", light:"#85714D"},
+    "New York Knicks": {primary:"#006BB6", accent:"#000000", light:"#F58426"},
+    "Oklahoma City Thunder": {primary:"#007AC1", accent:"#002D62", light:"#EF3B24"},
+    "Orlando Magic": {primary:"#0077C0", accent:"#000000", light:"#C4CED4"},
+    "Philadelphia 76ers": {primary:"#006BB6", accent:"#002B5C", light:"#ED174C"},
+    "Phoenix Suns": {primary:"#1D1160", accent:"#000000", light:"#E56020"},
+    "Portland Trail Blazers": {primary:"#E03A3E", accent:"#000000", light:"#E03A3E"},
+    "Sacramento Kings": {primary:"#5A2D81", accent:"#000000", light:"#63727A"},
+    "San Antonio Spurs": {primary:"#000000", accent:"#C4CED4", light:"#C4CED4"},
+    "Toronto Raptors": {primary:"#CE1141", accent:"#000000", light:"#A1A1A4"},
+    "Utah Jazz": {primary:"#002B5C", accent:"#000000", light:"#F9A01B"},
+    "Washington Wizards": {primary:"#002B5C", accent:"#000000", light:"#E31837"}
+  },
+  "NCAA (FBS)": {
+    "Boston College": {primary:"#98002E", accent:"#000000", light:"#BC9B6A"},
+    "California": {primary:"#003262", accent:"#000000", light:"#FDB515"},
+    "Clemson": {primary:"#F56600", accent:"#522D80", light:"#F56600"},
+    "Duke": {primary:"#003087", accent:"#000000", light:"#A7A9AC"},
+    "Florida State": {primary:"#782F40", accent:"#000000", light:"#CEB888"},
+    "Georgia Tech": {primary:"#B3A369", accent:"#003057", light:"#B3A369"},
+    "Louisville": {primary:"#AD0000", accent:"#000000", light:"#AD0000"},
+    "Miami (FL)": {primary:"#F47321", accent:"#005030", light:"#F47321"},
+    "NC State": {primary:"#CC0000", accent:"#000000", light:"#CC0000"},
+    "North Carolina": {primary:"#7BAFD4", accent:"#13294B", light:"#7BAFD4"},
+    "Pittsburgh": {primary:"#003594", accent:"#000000", light:"#FFB81C"},
+    "SMU": {primary:"#C8102E", accent:"#0033A0", light:"#C8102E"},
+    "Stanford": {primary:"#8C1515", accent:"#000000", light:"#8C1515"},
+    "Syracuse": {primary:"#D44500", accent:"#000000", light:"#D44500"},
+    "Virginia": {primary:"#232D4B", accent:"#E57200", light:"#E57200"},
+    "Virginia Tech": {primary:"#630031", accent:"#CF4420", light:"#CF4420"},
+    "Wake Forest": {primary:"#9E7E38", accent:"#000000", light:"#9E7E38"},
+    "Arizona": {primary:"#AB0520", accent:"#0C234B", light:"#AB0520"},
+    "Arizona State": {primary:"#8C1D40", accent:"#000000", light:"#FFC627"},
+    "Baylor": {primary:"#154734", accent:"#000000", light:"#FFB81C"},
+    "BYU": {primary:"#002E5D", accent:"#000000", light:"#C5C5C5"},
+    "Cincinnati": {primary:"#E00122", accent:"#000000", light:"#E00122"},
+    "Colorado": {primary:"#CFB87C", accent:"#000000", light:"#CFB87C"},
+    "Houston": {primary:"#C8102E", accent:"#000000", light:"#C8102E"},
+    "Iowa State": {primary:"#C8102E", accent:"#000000", light:"#F1BE48"},
+    "Kansas": {primary:"#0051BA", accent:"#E8000D", light:"#0051BA"},
+    "Kansas State": {primary:"#512888", accent:"#000000", light:"#A7A9AC"},
+    "Oklahoma State": {primary:"#FF7300", accent:"#000000", light:"#FF7300"},
+    "TCU": {primary:"#4D1979", accent:"#000000", light:"#A3A9AC"},
+    "Texas Tech": {primary:"#CC0000", accent:"#000000", light:"#CC0000"},
+    "UCF": {primary:"#000000", accent:"#FFC904", light:"#FFC904"},
+    "Utah": {primary:"#CC0000", accent:"#000000", light:"#CC0000"},
+    "West Virginia": {primary:"#002855", accent:"#000000", light:"#EAAA00"},
+    "Illinois": {primary:"#E84A27", accent:"#13294B", light:"#E84A27"},
+    "Indiana": {primary:"#990000", accent:"#000000", light:"#EEEDEB"},
+    "Iowa": {primary:"#FFCD00", accent:"#000000", light:"#FFCD00"},
+    "Maryland": {primary:"#E21833", accent:"#000000", light:"#FFD200"},
+    "Michigan": {primary:"#00274C", accent:"#000000", light:"#FFCB05"},
+    "Michigan State": {primary:"#18453B", accent:"#000000", light:"#FFFFFF"},
+    "Minnesota": {primary:"#7A0019", accent:"#000000", light:"#FFC72C"},
+    "Nebraska": {primary:"#E41C38", accent:"#000000", light:"#E41C38"},
+    "Northwestern": {primary:"#4E2A84", accent:"#000000", light:"#4E2A84"},
+    "Ohio State": {primary:"#BB0000", accent:"#666666", light:"#BB0000"},
+    "Oregon": {primary:"#154733", accent:"#000000", light:"#FEE123"},
+    "Penn State": {primary:"#041E42", accent:"#000000", light:"#FFFFFF"},
+    "Purdue": {primary:"#CEB888", accent:"#000000", light:"#CEB888"},
+    "Rutgers": {primary:"#CC0033", accent:"#000000", light:"#CC0033"},
+    "UCLA": {primary:"#2D68C4", accent:"#000000", light:"#F2A900"},
+    "USC": {primary:"#990000", accent:"#000000", light:"#FFC72C"},
+    "Washington": {primary:"#4B2E83", accent:"#000000", light:"#B7A57A"},
+    "Wisconsin": {primary:"#C5050C", accent:"#000000", light:"#C5050C"},
+    "Alabama": {primary:"#9E1B32", accent:"#000000", light:"#9E1B32"},
+    "Arkansas": {primary:"#9D2235", accent:"#000000", light:"#9D2235"},
+    "Auburn": {primary:"#0C2340", accent:"#E87722", light:"#E87722"},
+    "Florida": {primary:"#0021A5", accent:"#FA4616", light:"#FA4616"},
+    "Georgia": {primary:"#BA0C2F", accent:"#000000", light:"#BA0C2F"},
+    "Kentucky": {primary:"#0033A0", accent:"#000000", light:"#0033A0"},
+    "LSU": {primary:"#461D7C", accent:"#000000", light:"#FDD023"},
+    "Mississippi State": {primary:"#660000", accent:"#000000", light:"#660000"},
+    "Missouri": {primary:"#000000", accent:"#F1B82D", light:"#F1B82D"},
+    "Ole Miss": {primary:"#CE1126", accent:"#14213D", light:"#CE1126"},
+    "Oklahoma": {primary:"#841617", accent:"#000000", light:"#FDF9D8"},
+    "South Carolina": {primary:"#73000A", accent:"#000000", light:"#73000A"},
+    "Tennessee": {primary:"#FF8200", accent:"#000000", light:"#58595B"},
+    "Texas": {primary:"#BF5700", accent:"#333F48", light:"#BF5700"},
+    "Texas A&M": {primary:"#500000", accent:"#000000", light:"#500000"},
+    "Vanderbilt": {primary:"#866D4B", accent:"#000000", light:"#866D4B"},
+    "Army": {primary:"#000000", accent:"#D4BF91", light:"#D4BF91"},
+    "Charlotte": {primary:"#005035", accent:"#000000", light:"#A49665"},
+    "East Carolina": {primary:"#592A8A", accent:"#000000", light:"#FDC82F"},
+    "Florida Atlantic": {primary:"#003366", accent:"#000000", light:"#CC0000"},
+    "Memphis": {primary:"#003087", accent:"#000000", light:"#898D8D"},
+    "Navy": {primary:"#00205B", accent:"#000000", light:"#C5B783"},
+    "North Texas": {primary:"#00853E", accent:"#000000", light:"#00853E"},
+    "Rice": {primary:"#00205B", accent:"#000000", light:"#C6AA76"},
+    "South Florida": {primary:"#006747", accent:"#000000", light:"#CFC493"},
+    "Temple": {primary:"#9D2235", accent:"#000000", light:"#9D2235"},
+    "Tulane": {primary:"#006747", accent:"#418FDE", light:"#418FDE"},
+    "Tulsa": {primary:"#002D72", accent:"#000000", light:"#B9975B"},
+    "UAB": {primary:"#1E6B52", accent:"#000000", light:"#1E6B52"},
+    "UTSA": {primary:"#002A5C", accent:"#000000", light:"#F15A22"},
+    "Delaware": {primary:"#00539F", accent:"#000000", light:"#FFD200"},
+    "FIU": {primary:"#081E3F", accent:"#000000", light:"#B6862C"},
+    "Jacksonville State": {primary:"#A6192E", accent:"#000000", light:"#A6192E"},
+    "Kennesaw State": {primary:"#000000", accent:"#FFC629", light:"#FFC629"},
+    "Liberty": {primary:"#002D62", accent:"#000000", light:"#C41230"},
+    "Louisiana Tech": {primary:"#002F87", accent:"#000000", light:"#C8102E"},
+    "Middle Tennessee": {primary:"#0066CC", accent:"#000000", light:"#0066CC"},
+    "Missouri State": {primary:"#6E263D", accent:"#000000", light:"#6E263D"},
+    "New Mexico State": {primary:"#8C1D40", accent:"#000000", light:"#8C1D40"},
+    "Sam Houston": {primary:"#FF6600", accent:"#002E5D", light:"#FF6600"},
+    "UTEP": {primary:"#FF8200", accent:"#041E42", light:"#FF8200"},
+    "Western Kentucky": {primary:"#C8102E", accent:"#000000", light:"#C8102E"},
+    "Akron": {primary:"#041E42", accent:"#000000", light:"#A7A9AC"},
+    "Ball State": {primary:"#BA0C2F", accent:"#000000", light:"#BA0C2F"},
+    "Bowling Green": {primary:"#FE5000", accent:"#4F2C1D", light:"#FE5000"},
+    "Buffalo": {primary:"#005BBB", accent:"#000000", light:"#005BBB"},
+    "Central Michigan": {primary:"#6A0032", accent:"#000000", light:"#FFC82E"},
+    "Eastern Michigan": {primary:"#006633", accent:"#000000", light:"#006633"},
+    "Kent State": {primary:"#002664", accent:"#000000", light:"#EAAB00"},
+    "Miami (OH)": {primary:"#C41230", accent:"#000000", light:"#C41230"},
+    "Northern Illinois": {primary:"#BA0C2F", accent:"#000000", light:"#BA0C2F"},
+    "Ohio": {primary:"#00694E", accent:"#000000", light:"#00694E"},
+    "Toledo": {primary:"#00246B", accent:"#000000", light:"#FFCD00"},
+    "Western Michigan": {primary:"#7A2A2E", accent:"#000000", light:"#FFB612"},
+    "Air Force": {primary:"#003087", accent:"#000000", light:"#8A8D8F"},
+    "Boise State": {primary:"#0033A0", accent:"#D64309", light:"#D64309"},
+    "Colorado State": {primary:"#1E4D2B", accent:"#000000", light:"#C8C372"},
+    "Fresno State": {primary:"#DB0032", accent:"#002F87", light:"#DB0032"},
+    "Hawaii": {primary:"#024731", accent:"#000000", light:"#C8B568"},
+    "Nevada": {primary:"#003366", accent:"#000000", light:"#A7A9AC"},
+    "New Mexico": {primary:"#BA0C2F", accent:"#000000", light:"#A7A9AC"},
+    "San Diego State": {primary:"#A6192E", accent:"#000000", light:"#A6192E"},
+    "San Jose State": {primary:"#0055A2", accent:"#000000", light:"#E5A823"},
+    "UNLV": {primary:"#CF0A2C", accent:"#000000", light:"#CF0A2C"},
+    "Utah State": {primary:"#0F2439", accent:"#000000", light:"#0F2439"},
+    "Wyoming": {primary:"#492F24", accent:"#000000", light:"#FFC425"},
+    "Oregon State": {primary:"#DC4405", accent:"#000000", light:"#DC4405"},
+    "Washington State": {primary:"#981E32", accent:"#5E6A71", light:"#981E32"},
+    "Appalachian State": {primary:"#000000", accent:"#FFC72C", light:"#FFC72C"},
+    "Arkansas State": {primary:"#CC092F", accent:"#000000", light:"#CC092F"},
+    "Coastal Carolina": {primary:"#006F71", accent:"#000000", light:"#006F71"},
+    "Georgia Southern": {primary:"#011E41", accent:"#000000", light:"#011E41"},
+    "Georgia State": {primary:"#0039A6", accent:"#000000", light:"#0039A6"},
+    "James Madison": {primary:"#450084", accent:"#000000", light:"#CBB677"},
+    "Louisiana": {primary:"#CE181E", accent:"#000000", light:"#CE181E"},
+    "Louisiana-Monroe": {primary:"#840029", accent:"#000000", light:"#FFB81C"},
+    "Marshall": {primary:"#00B140", accent:"#000000", light:"#00B140"},
+    "Old Dominion": {primary:"#003057", accent:"#000000", light:"#A5ACAF"},
+    "South Alabama": {primary:"#00205B", accent:"#C41230", light:"#C41230"},
+    "Southern Miss": {primary:"#FFAA3C", accent:"#000000", light:"#FFAA3C"},
+    "Texas State": {primary:"#501214", accent:"#000000", light:"#C69214"},
+    "Troy": {primary:"#8A2432", accent:"#000000", light:"#A7A9AC"},
+    "Notre Dame": {primary:"#0C2340", accent:"#000000", light:"#C99700"},
+    "UConn": {primary:"#000E2F", accent:"#000000", light:"#E4002B"},
+    "UMass": {primary:"#881C1C", accent:"#000000", light:"#881C1C"}
+  }
+};
+
+// Flat lookup used everywhere else in the app
+const TEAMS = Object.assign({}, LEAGUE_TEAMS.MLB, LEAGUE_TEAMS.NFL, LEAGUE_TEAMS.NBA, LEAGUE_TEAMS["NCAA (FBS)"]);
+
+const DEFAULT_ROWS = [
+  ["Stat","0","0"]
+];
+
+let colCount = 2; // number of data columns currently active
+const colorPalette = ["#111111","#A71930","#5A5A5A","#1A5FB4","#2E7D32","#6A1B9A"];
+
+function populateTeamSelect(){
+  const sel = document.getElementById('teamSelect');
+  Object.keys(LEAGUE_TEAMS).forEach(league=>{
+    const group = document.createElement('optgroup');
+    group.label = league;
+    Object.keys(LEAGUE_TEAMS[league]).forEach(name=>{
+      const opt = document.createElement('option');
+      opt.value = name; opt.textContent = name;
+      group.appendChild(opt);
+    });
+    sel.appendChild(group);
+  });
+  sel.value = "Arizona Diamondbacks";
+  sel.addEventListener('change', ()=>{
+    const t = TEAMS[sel.value];
+    document.documentElement.style.setProperty('--primary', t.primary);
+    document.documentElement.style.setProperty('--accent', t.accent);
+    document.documentElement.style.setProperty('--light', t.light);
+  });
+}
+
+function buildRow(cells){
+  const tr = document.createElement('tr');
+  const labelTd = document.createElement('td');
+  labelTd.className = 'label-cell';
+  labelTd.contentEditable = 'true';
+  labelTd.textContent = cells[0];
+  tr.appendChild(labelTd);
+  for(let i=1;i<=colCount;i++){
+    const td = document.createElement('td');
+    td.className = 'col-c'+i;
+    td.contentEditable = 'true';
+    td.textContent = cells[i] !== undefined ? cells[i] : '0';
+    tr.appendChild(td);
+  }
+  const ctrlTd = document.createElement('td');
+  ctrlTd.className = 'row-ctrl-col no-export';
+  const btn = document.createElement('button');
+  btn.className = 'row-remove';
+  btn.textContent = '×';
+  btn.onclick = ()=> removeRow(tr);
+  ctrlTd.appendChild(btn);
+  tr.appendChild(ctrlTd);
+  return tr;
+}
+
+function removeRow(tr){
+  const body = document.getElementById('statBody');
+  if(body.children.length <= 1){
+    alert('At least 1 row is required.');
+    return;
+  }
+  tr.remove();
+  populateRowSelect();
+}
+
+function loadDefaultRows(){
+  const body = document.getElementById('statBody');
+  body.innerHTML = '';
+  DEFAULT_ROWS.forEach(r=> body.appendChild(buildRow(r)));
+}
+
+function addRow(){
+  const body = document.getElementById('statBody');
+  const blank = ['New Stat'];
+  const tr = buildRow(blank);
+  body.appendChild(tr);
+  if(document.getElementById('card').classList.contains('percentile-view')){
+    tr.classList.add('pctl-row');
+    tr.querySelectorAll('td[class^="col-c"]').forEach(updatePercentileCell);
+  }
+  populateRowSelect();
+}
+
+function setColColor(n, value){
+  document.documentElement.style.setProperty('--col'+n, value);
+}
+
+function addColumn(){
+  if(colCount >= 6){ alert('Maximum of 6 columns supported.'); return; }
+  colCount += 1;
+  const n = colCount;
+  const color = colorPalette[n-1] || '#333333';
+
+  // header cell
+  const headerRow = document.getElementById('headerRow');
+  const ctrlCell = headerRow.querySelector('.row-ctrl-col');
+  const th = document.createElement('td');
+  th.className = 'col-c'+n;
+
+  const thumb = document.createElement('div');
+  thumb.className = 'col-thumb empty';
+  thumb.setAttribute('data-col', n);
+  thumb.onclick = ()=> triggerPhotoUpload(n);
+  const thumbPlaceholder = document.createElement('span');
+  thumbPlaceholder.className = 'thumb-placeholder no-export';
+  thumbPlaceholder.textContent = '+ Photo';
+  thumb.appendChild(thumbPlaceholder);
+
+  const label = document.createElement('div');
+  label.contentEditable = 'true';
+  label.textContent = 'NEW COL';
+
+  const controls = document.createElement('div');
+  controls.className = 'col-controls no-export';
+  const swatch = document.createElement('input');
+  swatch.type = 'color';
+  swatch.className = 'col-swatch';
+  swatch.value = color;
+  swatch.oninput = ()=> setColColor(n, swatch.value);
+  const removeBtn = document.createElement('button');
+  removeBtn.className = 'col-remove';
+  removeBtn.textContent = '×';
+  removeBtn.onclick = ()=> removeColumn(n);
+  controls.appendChild(swatch);
+  controls.appendChild(removeBtn);
+
+  th.appendChild(thumb);
+  th.appendChild(label);
+  th.appendChild(controls);
+  headerRow.insertBefore(th, ctrlCell);
+  setColColor(n, color);
+
+  // body cells
+  const body = document.getElementById('statBody');
+  Array.from(body.children).forEach(tr=>{
+    const ctrl = tr.querySelector('.row-ctrl-col');
+    const td = document.createElement('td');
+    td.className = 'col-c'+n;
+    td.contentEditable = 'true';
+    td.textContent = '0';
+    tr.insertBefore(td, ctrl);
+    if(document.getElementById('card').classList.contains('percentile-view')){
+      updatePercentileCell(td);
+    }
+  });
+}
+
+function getActiveColumnCount(){
+  const headerRow = document.getElementById('headerRow');
+  return headerRow.querySelectorAll('td[class^="col-c"]').length;
+}
+
+function removeColumn(n){
+  if(getActiveColumnCount() <= 1){
+    alert('At least 1 column is required.');
+    return;
+  }
+  const headerRow = document.getElementById('headerRow');
+  const th = headerRow.querySelector('.col-c'+n);
+  if(th) th.remove();
+  const body = document.getElementById('statBody');
+  Array.from(body.children).forEach(tr=>{
+    const td = tr.querySelector('.col-c'+n);
+    if(td) td.remove();
+  });
+}
+
+// ---- Stat Templates ----
+const TEMPLATES = {
+  blank: [ ['Stat'] ],
+  slash: [ ['AVG'], ['OBP'], ['SLG'], ['OPS'] ],
+  discipline: [ ['BB%'], ['K%'], ['BB:K'], ['K-BB%'], ['TTO%'], ['HR%'] ],
+  full: [ ['AVG'], ['OBP'], ['SLG'], ['OPS'], ['ISO'], ['BABIP'],
+          ['BB%'], ['K%'], ['BB:K'], ['K-BB%'], ['TTO%'], ['HR%'], ['wOBA'] ],
+  pitchingBasic: [ ['ERA'], ['W'], ['L'], ['IP'], ['SO'], ['BB'], ['WHIP'] ],
+  pitchingAdvanced: [ ['K/9'], ['BB/9'], ['K/BB'], ['HR/9'], ['K%'], ['BB%'], ['K-BB%'],
+          ['WHIP'], ['BABIP'], ['LOB%'], ['ERA-'], ['FIP-'], ['FIP'] ],
+  pitchingBlend: [ ['ERA'], ['FIP'], ['IP'], ['K/9'], ['BB/9'], ['HR/9'], ['K-BB%'], ['ERA-'], ['FIP-'] ],
+  statcast: [ ['Stat'] ],
+};
+
+const PERCENTILE_TEMPLATES = new Set(['statcast']);
+
+function loadTemplate(){
+  const key = document.getElementById('templateSelect').value;
+  const rows = TEMPLATES[key] || TEMPLATES.blank;
+  const body = document.getElementById('statBody');
+  body.innerHTML = '';
+  rows.forEach(r => body.appendChild(buildRow(r)));
+
+  // Auto-switch card presentation to match the template
+  if(PERCENTILE_TEMPLATES.has(key)){
+    document.getElementById('cardStyleSelect').value = 'percentile';
+    setCardStyle('percentile');
+  } else {
+    document.getElementById('cardStyleSelect').value = 'table';
+    setCardStyle('table');
+  }
+  populateRowSelect();
+}
+
+// ---- Percentile Bars card style ----
+function pctlColor(val){
+  val = Math.max(0, Math.min(100, val));
+  const blue = [36, 94, 176];
+  const grey = [158, 158, 158];
+  const red  = [196, 30, 58];
+  let c1, c2, t;
+  if(val <= 50){ c1 = blue; c2 = grey; t = val/50; }
+  else { c1 = grey; c2 = red; t = (val-50)/50; }
+  const r = Math.round(c1[0] + (c2[0]-c1[0])*t);
+  const g = Math.round(c1[1] + (c2[1]-c1[1])*t);
+  const b = Math.round(c1[2] + (c2[2]-c1[2])*t);
+  return `rgb(${r},${g},${b})`;
+}
+
+// Builds/rebuilds the bar+badge structure for a cell from scratch (real DOM nodes,
+// inline styles only -- no CSS custom properties or pseudo-elements, so this exports
+// correctly via html2canvas regardless of its feature support level).
+function updatePercentileCell(td){
+  const existingBadge = td.querySelector('.pctl-badge');
+  const raw = existingBadge ? existingBadge.textContent.trim() : td.textContent.trim();
+  let val = parseFloat(raw);
+  if(isNaN(val)) val = 0;
+  val = Math.max(0, Math.min(100, val));
+  const color = pctlColor(val);
+
+  const existingRawStat = td.querySelector('.pctl-rawstat');
+  const rawStatVal = existingRawStat ? existingRawStat.textContent.trim() : (td.dataset.rawstat || '');
+
+  td.innerHTML = '';
+  td.contentEditable = 'false';
+
+  const wrap = document.createElement('div');
+  wrap.className = 'pctl-wrap';
+
+  const track = document.createElement('div');
+  track.className = 'pctl-track';
+
+  const fill = document.createElement('div');
+  fill.className = 'pctl-fill';
+  fill.style.width = val + '%';
+  fill.style.background = color;
+
+  const badge = document.createElement('div');
+  badge.className = 'pctl-badge';
+  badge.contentEditable = 'true';
+  badge.textContent = Math.round(val);
+  badge.style.left = 'calc(' + val + '% - 13px)';
+  badge.style.background = color;
+
+  track.appendChild(fill);
+  track.appendChild(badge);
+
+  const rawStat = document.createElement('div');
+  rawStat.className = 'pctl-rawstat';
+  rawStat.contentEditable = 'true';
+  rawStat.setAttribute('data-placeholder', 'stat');
+  rawStat.textContent = rawStatVal;
+  const colMatch = td.className.match(/col-c(\d+)/);
+  if(colMatch){
+    const colColor = getComputedStyle(document.documentElement).getPropertyValue('--col'+colMatch[1]).trim();
+    if(colColor) rawStat.style.color = colColor;
+  }
+
+  wrap.appendChild(track);
+  wrap.appendChild(rawStat);
+  td.appendChild(wrap);
+}
+
+// Live-updates fill width/color and badge position as the user types, without
+// rebuilding the badge's own text (so the cursor / in-progress typing isn't disturbed).
+function livePercentileUpdate(badge){
+  const td = badge.closest('td[class^="col-c"]');
+  if(!td) return;
+  let val = parseFloat(badge.textContent.trim());
+  if(isNaN(val)) return;
+  val = Math.max(0, Math.min(100, val));
+  const color = pctlColor(val);
+  const fill = td.querySelector('.pctl-fill');
+  if(fill){ fill.style.width = val + '%'; fill.style.background = color; }
+  badge.style.left = 'calc(' + val + '% - 13px)';
+  badge.style.background = color;
+}
+
+function finalizePercentileBadge(badge){
+  let val = parseFloat(badge.textContent.trim());
+  if(isNaN(val)) val = 0;
+  val = Math.max(0, Math.min(100, Math.round(val)));
+  badge.textContent = val;
+  livePercentileUpdate(badge);
+}
+
+function refreshAllPercentileCells(){
+  document.querySelectorAll('#statBody tr').forEach(tr=>{
+    tr.classList.add('pctl-row');
+    tr.querySelectorAll('td[class^="col-c"]').forEach(updatePercentileCell);
+  });
+}
+
+// Reverts percentile-styled cells back to plain editable text (for switching back to Table mode).
+// The raw-stat value is stashed on the cell itself so it survives the round trip.
+function restoreTableCells(){
+  document.querySelectorAll('#statBody tr').forEach(tr=>{
+    tr.classList.remove('pctl-row');
+    tr.querySelectorAll('td[class^="col-c"]').forEach(td=>{
+      const badge = td.querySelector('.pctl-badge');
+      const rawStat = td.querySelector('.pctl-rawstat');
+      if(rawStat) td.dataset.rawstat = rawStat.textContent.trim();
+      const val = badge ? badge.textContent.trim() : '0';
+      td.innerHTML = '';
+      td.contentEditable = 'true';
+      td.textContent = val;
+    });
+  });
+}
+
+// ---- Per-row conversion: turn ONE row into a Savant bubble row, or back to a plain stat row ----
+function populateRowSelect(){
+  const sel = document.getElementById('rowSelect');
+  if(!sel) return;
+  const prevValue = sel.value;
+  sel.innerHTML = '';
+  document.querySelectorAll('#statBody tr').forEach((tr, i)=>{
+    const labelCell = tr.querySelector('.label-cell');
+    const label = labelCell ? labelCell.textContent.trim() : ('Row '+(i+1));
+    const opt = document.createElement('option');
+    opt.value = i;
+    opt.textContent = label || '(blank row '+(i+1)+')';
+    sel.appendChild(opt);
+  });
+  // keep the same row selected across a refresh when possible
+  if(prevValue !== '' && sel.querySelector('option[value="'+prevValue+'"]')){
+    sel.value = prevValue;
+  }
+}
+
+function getSelectedRow(){
+  const sel = document.getElementById('rowSelect');
+  if(!sel || sel.value === '') return null;
+  const rows = document.querySelectorAll('#statBody tr');
+  return rows[parseInt(sel.value, 10)] || null;
+}
+
+function showRowConvertStatus(msg){
+  const el = document.getElementById('rowConvertStatus');
+  if(el) el.textContent = msg;
+}
+
+function makeRowBubble(){
+  const tr = getSelectedRow();
+  if(!tr){ showRowConvertStatus('No row selected -- pick one from the dropdown above.'); return; }
+  const label = tr.querySelector('.label-cell').textContent.trim() || '(blank row)';
+  tr.classList.add('pctl-row');
+  tr.querySelectorAll('td[class^="col-c"]').forEach(updatePercentileCell);
+  scheduleScaleUpdate();
+  scheduleAutosave();
+  showRowConvertStatus('"'+label+'" is now a Savant bubble row.');
+}
+
+function makeRowBaseStat(){
+  const tr = getSelectedRow();
+  if(!tr){ showRowConvertStatus('No row selected -- pick one from the dropdown above.'); return; }
+  const label = tr.querySelector('.label-cell').textContent.trim() || '(blank row)';
+  tr.classList.remove('pctl-row');
+  tr.querySelectorAll('td[class^="col-c"]').forEach(td=>{
+    const badge = td.querySelector('.pctl-badge');
+    const rawStat = td.querySelector('.pctl-rawstat');
+    if(rawStat) td.dataset.rawstat = rawStat.textContent.trim();
+    const val = badge ? badge.textContent.trim() : '0';
+    td.innerHTML = '';
+    td.contentEditable = 'true';
+    td.textContent = val;
+  });
+  scheduleScaleUpdate();
+  scheduleAutosave();
+  showRowConvertStatus('"'+label+'" is back to a plain base stat.');
+}
+
+function setCardStyle(mode){
+  const card = document.getElementById('card');
+  if(mode === 'percentile'){
+    card.classList.add('percentile-view');
+    refreshAllPercentileCells();
+  } else {
+    if(card.classList.contains('percentile-view')){
+      restoreTableCells();
+    }
+    card.classList.remove('percentile-view');
+  }
+  scheduleScaleUpdate();
+}
+
+// Typing directly into a badge: live-updates the bar/position as you type, finalizes on blur
+document.getElementById('statBody').addEventListener('input', (e)=>{
+  if(e.target.classList && e.target.classList.contains('pctl-badge')){
+    livePercentileUpdate(e.target);
+  }
+  if(e.target.classList && e.target.classList.contains('pctl-rawstat')){
+    const td = e.target.closest('td[class^="col-c"]');
+    if(td) td.dataset.rawstat = e.target.textContent.trim();
+  }
+  if(e.target.classList && e.target.classList.contains('label-cell')){
+    populateRowSelect();
+  }
+});
+document.getElementById('statBody').addEventListener('blur', (e)=>{
+  if(e.target.classList && e.target.classList.contains('pctl-badge')){
+    finalizePercentileBadge(e.target);
+  }
+}, true);
+
+// ---- Drag-to-set slider behavior on the percentile bar itself ----
+// Click straight on the track: jumps immediately and starts dragging.
+// Press-and-drag the badge: slides it (a plain click on the badge still just places a
+// text cursor, so typing a number directly still works exactly as before).
+let pctlPointer = { down:false, dragging:false, startX:0, track:null, badge:null };
+
+function pctlValueFromClientX(track, clientX){
+  const rect = track.getBoundingClientRect();
+  let pct = (clientX - rect.left) / rect.width * 100;
+  return Math.round(Math.max(0, Math.min(100, pct)));
+}
+
+function pctlPointerDown(e){
+  const track = e.target.closest && e.target.closest('.pctl-track');
+  if(!track) return;
+  const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+  pctlPointer.down = true;
+  pctlPointer.dragging = false;
+  pctlPointer.startX = clientX;
+  pctlPointer.track = track;
+  pctlPointer.badge = track.querySelector('.pctl-badge');
+
+  const onBadge = e.target.closest('.pctl-badge');
+  if(!onBadge){
+    // Clicked the track background directly -- jump the value there and start dragging right away
+    e.preventDefault();
+    pctlPointer.dragging = true;
+    const val = pctlValueFromClientX(track, clientX);
+    pctlPointer.badge.textContent = val;
+    livePercentileUpdate(pctlPointer.badge);
+  }
+  // If the click landed on the badge itself, wait for real movement (see pctlPointerMove)
+  // before treating it as a drag, so a plain click can still place a text cursor for typing.
+}
+
+function pctlPointerMove(e){
+  if(!pctlPointer.down) return;
+  const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+  if(!pctlPointer.dragging){
+    if(Math.abs(clientX - pctlPointer.startX) > 4){
+      pctlPointer.dragging = true;
+      pctlPointer.badge.blur();
+    } else {
+      return;
+    }
+  }
+  if(e.cancelable) e.preventDefault();
+  const val = pctlValueFromClientX(pctlPointer.track, clientX);
+  pctlPointer.badge.textContent = val;
+  livePercentileUpdate(pctlPointer.badge);
+}
+
+function pctlPointerUp(){
+  if(pctlPointer.dragging){
+    finalizePercentileBadge(pctlPointer.badge);
+  }
+  pctlPointer.down = false;
+  pctlPointer.dragging = false;
+  pctlPointer.track = null;
+  pctlPointer.badge = null;
+}
+
+document.getElementById('statBody').addEventListener('mousedown', pctlPointerDown);
+window.addEventListener('mousemove', pctlPointerMove);
+window.addEventListener('mouseup', pctlPointerUp);
+document.getElementById('statBody').addEventListener('touchstart', pctlPointerDown, {passive:false});
+window.addEventListener('touchmove', pctlPointerMove, {passive:false});
+window.addEventListener('touchend', pctlPointerUp);
+
+// ---- Photo upload target tracking (main header photo, or a specific column headshot) ----
+let pendingUploadTarget = 'main';
+
+function triggerPhotoUpload(target){
+  pendingUploadTarget = target;
+  document.getElementById('photoInput').click();
+}
+
+function handlePhotoUpload(file){
+  const reader = new FileReader();
+  reader.onload = (e)=>{
+    openCropModal(e.target.result);
+  };
+  reader.readAsDataURL(file);
+}
+
+document.getElementById('photoInput').addEventListener('change', (e)=>{
+  if(e.target.files && e.target.files[0]){
+    handlePhotoUpload(e.target.files[0]);
+    e.target.value = ''; // allow re-selecting the same file later
+  }
+});
+
+// ---- Manual crop tool ----
+let STAGE_SIZE = 320;
+const OUTPUT_SIZE = 400;
+let cropState = { naturalW:0, naturalH:0, baseScale:1, zoom:1, offX:0, offY:0 };
+let dragState = { active:false, startX:0, startY:0, startOffX:0, startOffY:0 };
+
+function openCropModal(dataUrl){
+  const modal = document.getElementById('cropModal');
+  const img = document.getElementById('cropImg');
+  const slider = document.getElementById('zoomSlider');
+  const stage = document.getElementById('cropStage');
+
+  STAGE_SIZE = Math.max(200, Math.min(320, window.innerWidth - 80, window.innerHeight - 260));
+  stage.style.width = STAGE_SIZE + 'px';
+  stage.style.height = STAGE_SIZE + 'px';
+
+  img.onload = ()=>{
+    cropState.naturalW = img.naturalWidth;
+    cropState.naturalH = img.naturalHeight;
+    cropState.baseScale = Math.max(STAGE_SIZE / cropState.naturalW, STAGE_SIZE / cropState.naturalH);
+    cropState.zoom = 1;
+    slider.value = 1;
+    centerImage();
+    renderCropImage();
+  };
+  img.src = dataUrl;
+  modal.style.display = 'flex';
+}
+
+function closeCropModal(){
+  document.getElementById('cropModal').style.display = 'none';
+}
+
+function centerImage(){
+  const scale = cropState.baseScale * cropState.zoom;
+  const dw = cropState.naturalW * scale;
+  const dh = cropState.naturalH * scale;
+  cropState.offX = (STAGE_SIZE - dw) / 2;
+  cropState.offY = (STAGE_SIZE - dh) / 2;
+}
+
+function clampOffsets(){
+  const scale = cropState.baseScale * cropState.zoom;
+  const dw = cropState.naturalW * scale;
+  const dh = cropState.naturalH * scale;
+  const minX = STAGE_SIZE - dw, maxX = 0;
+  const minY = STAGE_SIZE - dh, maxY = 0;
+  cropState.offX = Math.min(maxX, Math.max(minX, cropState.offX));
+  cropState.offY = Math.min(maxY, Math.max(minY, cropState.offY));
+}
+
+function renderCropImage(){
+  const img = document.getElementById('cropImg');
+  const scale = cropState.baseScale * cropState.zoom;
+  img.style.width = (cropState.naturalW * scale) + 'px';
+  img.style.height = (cropState.naturalH * scale) + 'px';
+  img.style.left = cropState.offX + 'px';
+  img.style.top = cropState.offY + 'px';
+}
+
+document.getElementById('zoomSlider').addEventListener('input', (e)=>{
+  cropState.zoom = parseFloat(e.target.value);
+  clampOffsets();
+  renderCropImage();
+});
+
+const cropStageEl = document.getElementById('cropStage');
+
+function dragStart(x, y){
+  dragState.active = true;
+  dragState.startX = x; dragState.startY = y;
+  dragState.startOffX = cropState.offX; dragState.startOffY = cropState.offY;
+  cropStageEl.classList.add('dragging');
+}
+function dragMove(x, y){
+  if(!dragState.active) return;
+  cropState.offX = dragState.startOffX + (x - dragState.startX);
+  cropState.offY = dragState.startOffY + (y - dragState.startY);
+  clampOffsets();
+  renderCropImage();
+}
+function dragEnd(){
+  dragState.active = false;
+  cropStageEl.classList.remove('dragging');
+}
+
+cropStageEl.addEventListener('mousedown', (e)=> dragStart(e.clientX, e.clientY));
+window.addEventListener('mousemove', (e)=> dragMove(e.clientX, e.clientY));
+window.addEventListener('mouseup', dragEnd);
+
+cropStageEl.addEventListener('touchstart', (e)=>{
+  const t = e.touches[0]; dragStart(t.clientX, t.clientY);
+}, {passive:true});
+window.addEventListener('touchmove', (e)=>{
+  if(dragState.active){ const t = e.touches[0]; dragMove(t.clientX, t.clientY); }
+}, {passive:true});
+window.addEventListener('touchend', dragEnd);
+
+function applyCrop(){
+  const img = document.getElementById('cropImg');
+  const scale = cropState.baseScale * cropState.zoom;
+  const sx = -cropState.offX / scale;
+  const sy = -cropState.offY / scale;
+  const sSize = STAGE_SIZE / scale;
+
+  const canvas = document.createElement('canvas');
+  canvas.width = OUTPUT_SIZE;
+  canvas.height = OUTPUT_SIZE;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(img, sx, sy, sSize, sSize, 0, 0, OUTPUT_SIZE, OUTPUT_SIZE);
+
+  const croppedDataUrl = canvas.toDataURL('image/png');
+
+  if(pendingUploadTarget === 'main'){
+    const frame = document.getElementById('photoFrame');
+    frame.classList.remove('empty');
+    frame.classList.add('has-photo');
+    frame.innerHTML = '';
+    const finalImg = document.createElement('img');
+    finalImg.src = croppedDataUrl;
+    finalImg.style.objectPosition = 'center center';
+    frame.appendChild(finalImg);
+  } else {
+    const thumb = document.querySelector('.col-thumb[data-col="'+pendingUploadTarget+'"]');
+    if(thumb){
+      thumb.classList.remove('empty');
+      thumb.classList.add('has-photo');
+      thumb.innerHTML = '';
+      const finalImg = document.createElement('img');
+      finalImg.src = croppedDataUrl;
+      thumb.appendChild(finalImg);
+    }
+  }
+
+  closeCropModal();
+}
+
+function exportPNG(){
+  const noExportEls = document.querySelectorAll('.no-export');
+  noExportEls.forEach(el=> el.style.visibility = 'hidden');
+  const ctrlCols = document.querySelectorAll('.row-ctrl-col');
+  ctrlCols.forEach(el=> el.style.visibility = 'hidden');
+
+  const card = document.getElementById('card');
+  const prevTransform = card.style.transform;
+  card.style.transform = 'none'; // always export at full native resolution
+
+  html2canvas(card, {scale:2, backgroundColor:'#ffffff'}).then(canvas=>{
+    card.style.transform = prevTransform;
+    noExportEls.forEach(el=> el.style.visibility = 'visible');
+    ctrlCols.forEach(el=> el.style.visibility = 'visible');
+    const link = document.createElement('a');
+    link.download = 'player-stat-card.png';
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+  }).catch(err=>{
+    card.style.transform = prevTransform;
+    noExportEls.forEach(el=> el.style.visibility = 'visible');
+    ctrlCols.forEach(el=> el.style.visibility = 'visible');
+    alert('Export failed: ' + err);
+  });
+}
+
+// ---- Responsive scaling for mobile/web ----
+const cardEl = document.getElementById('card');
+const cardWrapperEl = document.querySelector('.card-wrapper');
+const controlsEl = document.querySelector('.controls');
+const CARD_NATIVE_WIDTH = 920;
+
+function updateCardScale(){
+  const isStacked = window.innerWidth < (CARD_NATIVE_WIDTH + 340 + 28 + 48);
+  const bodyPad = window.innerWidth < 600 ? 24 : 48;
+  let available;
+  if(isStacked){
+    available = window.innerWidth - bodyPad - 20; // minus card-wrapper padding
+  } else {
+    available = window.innerWidth - bodyPad - 20 - controlsEl.offsetWidth - 28;
+  }
+  available = Math.max(available, 240);
+  const scale = Math.min(1, available / CARD_NATIVE_WIDTH);
+
+  cardEl.style.transform = 'scale(' + scale + ')';
+
+  const naturalHeight = cardEl.offsetHeight; // offsetHeight ignores CSS transform
+  cardWrapperEl.style.width = (CARD_NATIVE_WIDTH * scale + 20) + 'px';
+  cardWrapperEl.style.height = (naturalHeight * scale + 20) + 'px';
+}
+
+let scaleRAF = false;
+function scheduleScaleUpdate(){
+  if(scaleRAF) return;
+  scaleRAF = true;
+  requestAnimationFrame(()=>{ updateCardScale(); scaleRAF = false; });
+}
+
+window.addEventListener('resize', scheduleScaleUpdate);
+
+const cardObserver = new MutationObserver(()=>{ scheduleScaleUpdate(); scheduleAutosave(); });
+cardObserver.observe(cardEl, { childList:true, subtree:true, characterData:true });
+
+// ---- Save & Load (autosave to localStorage + export/import as a .json file) ----
+const AUTOSAVE_KEY = 'statCardBuilder_autosave_v1';
+
+function serializeCard(){
+  const state = { version: 1, title: '', team: '', cardStyle: 'table', mainPhoto: null, columns: [], rows: [] };
+
+  const h1 = document.querySelector('.header h1');
+  state.title = h1 ? h1.textContent : '';
+  state.team = document.getElementById('teamSelect').value;
+  state.cardStyle = document.getElementById('cardStyleSelect').value;
+
+  const mainImg = document.getElementById('photoFrame').querySelector('img');
+  state.mainPhoto = mainImg ? mainImg.src : null;
+
+  const headerRow = document.getElementById('headerRow');
+  const headerCells = Array.from(headerRow.querySelectorAll('td[class^="col-c"]'));
+  headerCells.forEach(td=>{
+    const label = td.querySelector('div[contenteditable]');
+    const swatch = td.querySelector('input[type=color]');
+    const img = td.querySelector('.col-thumb img');
+    state.columns.push({
+      label: label ? label.textContent : '',
+      color: swatch ? swatch.value : '#111111',
+      photo: img ? img.src : null
+    });
+  });
+
+  const colClasses = headerCells.map(td=>td.className);
+  document.querySelectorAll('#statBody tr').forEach(tr=>{
+    const labelCell = tr.querySelector('.label-cell');
+    const rowData = { label: labelCell ? labelCell.textContent : '', isPctl: tr.classList.contains('pctl-row'), values: [] };
+    colClasses.forEach(cls=>{
+      const td = tr.querySelector('.'+cls);
+      if(!td){ rowData.values.push({value:'0', rawstat:''}); return; }
+      const badge = td.querySelector('.pctl-badge');
+      const rawstatEl = td.querySelector('.pctl-rawstat');
+      const value = badge ? badge.textContent.trim() : td.textContent.trim();
+      const rawstat = rawstatEl ? rawstatEl.textContent.trim() : (td.dataset.rawstat || '');
+      rowData.values.push({ value, rawstat });
+    });
+    state.rows.push(rowData);
+  });
+
+  return state;
+}
+
+function restoreCard(state){
+  if(!state || !state.columns || !state.rows) return;
+
+  const h1 = document.querySelector('.header h1');
+  if(h1 && state.title !== undefined) h1.textContent = state.title;
+
+  if(state.team){
+    const teamSel = document.getElementById('teamSelect');
+    teamSel.value = state.team;
+    const t = TEAMS[state.team];
+    if(t){
+      document.documentElement.style.setProperty('--primary', t.primary);
+      document.documentElement.style.setProperty('--accent', t.accent);
+      document.documentElement.style.setProperty('--light', t.light);
+    }
+  }
+
+  const mainFrame = document.getElementById('photoFrame');
+  if(state.mainPhoto){
+    mainFrame.classList.remove('empty'); mainFrame.classList.add('has-photo');
+    mainFrame.innerHTML = '';
+    const img = document.createElement('img');
+    img.src = state.mainPhoto;
+    mainFrame.appendChild(img);
+  } else {
+    mainFrame.classList.add('empty'); mainFrame.classList.remove('has-photo');
+    mainFrame.innerHTML = '<span class="placeholder no-export">+ Add Photo</span>';
+  }
+
+  // Rebuild columns from scratch to match the saved count
+  const headerRow = document.getElementById('headerRow');
+  headerRow.querySelectorAll('td[class^="col-c"]').forEach(td=>td.remove());
+  document.querySelectorAll('#statBody tr').forEach(tr=>{
+    tr.querySelectorAll('td[class^="col-c"]').forEach(td=>td.remove());
+  });
+  colCount = 0;
+  const numCols = Math.max(1, state.columns.length);
+  for(let i=0;i<numCols;i++){ addColumn(); }
+
+  // Rebuild rows
+  const body = document.getElementById('statBody');
+  body.innerHTML = '';
+  state.rows.forEach(rowData=>{
+    const cells = rowData.values.map(v=>v.value);
+    const tr = buildRow([rowData.label, ...cells]);
+    body.appendChild(tr);
+    const tds = tr.querySelectorAll('td[class^="col-c"]');
+    tds.forEach((td, idx)=>{
+      const rs = rowData.values[idx] ? rowData.values[idx].rawstat : '';
+      if(rs) td.dataset.rawstat = rs;
+    });
+  });
+
+  // Column labels, colors, photos
+  const headerCells = Array.from(headerRow.querySelectorAll('td[class^="col-c"]'));
+  headerCells.forEach((td, idx)=>{
+    const colData = state.columns[idx];
+    if(!colData) return;
+    const n = td.className.replace('col-c','');
+    const labelDiv = td.querySelector('div[contenteditable]');
+    if(labelDiv) labelDiv.textContent = colData.label;
+    const swatch = td.querySelector('input[type=color]');
+    if(swatch && colData.color){ swatch.value = colData.color; setColColor(n, colData.color); }
+    if(colData.photo){
+      const thumb = td.querySelector('.col-thumb');
+      thumb.classList.remove('empty'); thumb.classList.add('has-photo');
+      thumb.innerHTML = '';
+      const img = document.createElement('img');
+      img.src = colData.photo;
+      thumb.appendChild(img);
+    }
+  });
+
+  if(state.cardStyle){
+    document.getElementById('cardStyleSelect').value = state.cardStyle;
+    // Only the header/photo cosmetic shape follows the saved overall style now --
+    // each row's own bar-vs-text state (isPctl) is what actually controls its content.
+    if(state.cardStyle === 'percentile'){
+      cardEl.classList.add('percentile-view');
+    } else {
+      cardEl.classList.remove('percentile-view');
+    }
+  }
+
+  const rebuiltRows = document.querySelectorAll('#statBody tr');
+  state.rows.forEach((rowData, idx)=>{
+    const tr = rebuiltRows[idx];
+    if(!tr) return;
+    if(rowData.isPctl){
+      tr.classList.add('pctl-row');
+      tr.querySelectorAll('td[class^="col-c"]').forEach(updatePercentileCell);
+    } else {
+      tr.classList.remove('pctl-row');
+    }
+  });
+
+  populateRowSelect();
+  scheduleScaleUpdate();
+}
+
+let autosaveTimer = null;
+function scheduleAutosave(){
+  if(autosaveTimer) clearTimeout(autosaveTimer);
+  autosaveTimer = setTimeout(doAutosave, 600);
+}
+
+function doAutosave(){
+  try{
+    const state = serializeCard();
+    localStorage.setItem(AUTOSAVE_KEY, JSON.stringify(state));
+  } catch(err){
+    // Likely a localStorage quota issue (large embedded photos) -- non-fatal, Export still works.
+    console.warn('Autosave failed (browser storage may be full). Use Export Progress to save a file instead.', err);
+  }
+}
+
+function loadAutosave(){
+  let raw;
+  try{ raw = localStorage.getItem(AUTOSAVE_KEY); } catch(err){ return; }
+  if(!raw) return;
+  try{
+    const state = JSON.parse(raw);
+    restoreCard(state);
+  } catch(err){
+    console.warn('Could not read autosave.', err);
+  }
+}
+
+function clearAutosave(){
+  if(!confirm('Clear the auto-saved card and start fresh? This cannot be undone.')) return;
+  try{ localStorage.removeItem(AUTOSAVE_KEY); } catch(err){}
+  location.reload();
+}
+
+function exportProgress(){
+  const state = serializeCard();
+  const blob = new Blob([JSON.stringify(state, null, 2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  const nameGuess = (state.title || 'stat-card').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'') || 'stat-card';
+  link.download = nameGuess + '.json';
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
+document.getElementById('importFileInput').addEventListener('change', (e)=>{
+  const file = e.target.files && e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = (ev)=>{
+    try{
+      const state = JSON.parse(ev.target.result);
+      restoreCard(state);
+      doAutosave();
+    } catch(err){
+      alert('Could not read that file -- make sure it\'s a .json file exported from this tool.');
+    }
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+});
+
+// ---- CSV Import: players-as-rows CSV -> stats-as-rows statcard, user picks which CSV rows become which columns ----
+let csvParsedData = null;
+let csvSelectedOrder = [];
+
+function parseCSV(text){
+  const lines = text.split(/\r\n|\n|\r/).filter(l => l.trim().length > 0);
+  const parseLine = (line) => {
+    const result = [];
+    let cur = '', inQuotes = false;
+    for(let i=0; i<line.length; i++){
+      const ch = line[i];
+      if(inQuotes){
+        if(ch === '"'){
+          if(line[i+1] === '"'){ cur += '"'; i++; }
+          else inQuotes = false;
+        } else cur += ch;
+      } else {
+        if(ch === '"') inQuotes = true;
+        else if(ch === ','){ result.push(cur); cur = ''; }
+        else cur += ch;
+      }
+    }
+    result.push(cur);
+    return result.map(s => s.trim());
+  };
+  const rows = lines.map(parseLine);
+  return { headers: rows[0] || [], dataRows: rows.slice(1) };
+}
+
+document.getElementById('csvFileInput').addEventListener('change', (e)=>{
+  const file = e.target.files && e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = (ev)=>{
+    csvParsedData = parseCSV(ev.target.result);
+    if(csvParsedData.dataRows.length === 0){
+      alert('No data rows found in that CSV.');
+      csvParsedData = null;
+      return;
+    }
+    csvSelectedOrder = [];
+    renderCsvRowList();
+    document.getElementById('csvMapUI').style.display = 'block';
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+});
+
+function renderCsvRowList(){
+  const container = document.getElementById('csvRowList');
+  container.innerHTML = '';
+  csvParsedData.dataRows.forEach((row, idx)=>{
+    const label = row[0] || ('Row ' + (idx+1));
+    const div = document.createElement('div');
+    div.style.padding = '4px 0';
+    div.innerHTML =
+      '<label style="font-size:13px; font-weight:500; display:flex; align-items:center; gap:8px; cursor:pointer;">' +
+      '<input type="checkbox" id="csvRow_' + idx + '" onchange="toggleCsvRowSelection(' + idx + ')">' +
+      '<span id="csvRow_' + idx + '_order" style="font-weight:700; color:#0b5cab; width:16px; display:inline-block;"></span>' +
+      escapeHtml(label) +
+      '</label>';
+    container.appendChild(div);
+  });
+}
+
+function escapeHtml(s){
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+function toggleCsvRowSelection(idx){
+  const checkbox = document.getElementById('csvRow_'+idx);
+  if(checkbox.checked){
+    if(csvSelectedOrder.length >= 6){
+      alert('Maximum 6 columns supported. Uncheck a row before adding another.');
+      checkbox.checked = false;
+      return;
+    }
+    csvSelectedOrder.push(idx);
+  } else {
+    csvSelectedOrder = csvSelectedOrder.filter(i => i !== idx);
+  }
+  csvParsedData.dataRows.forEach((row, i)=>{
+    const badge = document.getElementById('csvRow_'+i+'_order');
+    const pos = csvSelectedOrder.indexOf(i);
+    badge.textContent = pos >= 0 ? (pos+1) : '';
+  });
+}
+
+function cancelCsvImport(){
+  document.getElementById('csvMapUI').style.display = 'none';
+  document.querySelectorAll('#csvRowList input[type=checkbox]').forEach(cb => cb.checked = false);
+  csvParsedData = null;
+  csvSelectedOrder = [];
+}
+
+function formatCsvValue(header, rawValue){
+  const trimmed = String(rawValue).trim();
+  if(trimmed === '') return trimmed;
+  const isPureNumber = /^-?(\d+\.?\d*|\.\d+)$/.test(trimmed);
+  if(!isPureNumber) return trimmed; // non-numeric text (team codes, split names, etc.) -- leave as-is
+
+  const num = parseFloat(trimmed);
+  const isPercent = /%/.test(header);
+  const isNormalized = /[+-]\s*$/.test(header.trim()); // wRC+, OPS+, ERA-, FIP-, xFIP-, etc.
+  const looksInteger = !trimmed.includes('.');
+
+  if(looksInteger && !isPercent) return trimmed; // whole-number counting stats (PA, HR, G...) stay exact
+
+  if(isPercent) return (num*100).toFixed(1) + '%';
+  if(isNormalized) return String(Math.round(num));
+
+  let rounded = num.toFixed(3);
+  if(Math.abs(num) < 1) rounded = rounded.replace(/^(-?)0\./, '$1.'); // .346 not 0.346, but keep 1.246 as-is
+  return rounded;
+}
+
+function importCsvSelection(){
+  if(!csvParsedData || csvSelectedOrder.length === 0){ alert('Select at least one row first.'); return; }
+  const headers = csvParsedData.headers;
+  const selectedRows = csvSelectedOrder.map(idx => csvParsedData.dataRows[idx]);
+  const numNeeded = selectedRows.length;
+
+  // If the only row present is still the untouched default ("Stat" / all zeros), clear it first
+  // rather than leaving it sitting there alongside the real imported data.
+  const existingRows = document.querySelectorAll('#statBody tr');
+  if(existingRows.length === 1){
+    const tr = existingRows[0];
+    const label = tr.querySelector('.label-cell').textContent.trim();
+    const vals = Array.from(tr.querySelectorAll('td[class^="col-c"]')).map(td => td.textContent.trim());
+    if(label === 'Stat' && vals.every(v => v === '0')){
+      tr.remove();
+    }
+  }
+
+  while(getActiveColumnCount() < numNeeded && getActiveColumnCount() < 6){
+    addColumn();
+  }
+
+  const headerCells = Array.from(document.querySelectorAll('#headerRow td[class^="col-c"]'));
+  selectedRows.forEach((row, i)=>{
+    if(headerCells[i]){
+      const labelDiv = headerCells[i].querySelector('div[contenteditable]');
+      if(labelDiv) labelDiv.textContent = row[0] || ('Column ' + (i+1));
+    }
+  });
+
+  // The CSV's first column header (e.g. "Season") describes what distinguishes the columns --
+  // show it as a small subtitle under "STAT" instead of wasting a row on it.
+  const subtitleEl = document.getElementById('statColSubtitle');
+  if(subtitleEl) subtitleEl.textContent = headers[0] || '';
+
+  for(let colIdx = 1; colIdx < headers.length; colIdx++){
+    const statLabel = headers[colIdx] || ('Stat ' + colIdx);
+    const values = selectedRows.map(row => formatCsvValue(statLabel, row[colIdx] !== undefined ? row[colIdx] : '0'));
+    const tr = buildRow([statLabel, ...values]);
+    document.getElementById('statBody').appendChild(tr);
+  }
+  populateRowSelect();
+
+  cancelCsvImport();
+  scheduleAutosave();
+}
+
+// Catch typing (titles, labels, values, badges, raw stats) that MutationObserver's
+// characterData watch might otherwise miss timing-wise, and non-DOM state changes.
+document.getElementById('card').addEventListener('input', scheduleAutosave);
+document.getElementById('teamSelect').addEventListener('change', scheduleAutosave);
+
+populateTeamSelect();
+loadDefaultRows();
+populateRowSelect();
+loadAutosave();
+scheduleScaleUpdate();
+</script>
+
+</body>
+</html>
