@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vicky+ Leaderboards</title>
+<link rel="stylesheet" href="vickyplus.css">
+</head>
+<body>
+<div class="page-nav"><a href="index.html">← Home</a></div>
+<h2 class="pagetitle">Vicky+ Leaderboards</h2>
+
+<div class="card">
+  <div class="seg" id="modes">
+    <button class="on" data-mode="player">Player Stats</button>
+    <button data-mode="team">Team Stats</button>
+    <button data-mode="pj">Projections</button>
+  </div>
+
+  <div class="panel">
+    <div class="row">
+      <label class="l" for="team">Team:</label><select id="team"></select>
+      <label class="chk" id="splitTeamsBox"><input type="checkbox" id="splitTeams" checked> Split Teams</label>
+      <label class="l" for="role">Positional Split:</label>
+      <select id="role"><option value="all">All Pitching</option><option value="sp">Starters</option><option value="rp">Relievers</option></select>
+    </div>
+    <div class="row" id="seasonRow">
+      <label class="l" for="single">Single Season:</label><select id="single"></select>
+      <label class="l" for="from">Multiple Seasons:</label><select id="from"></select> to <select id="to"></select>
+      <label class="chk" id="splitSeasonsBox"><input type="checkbox" id="splitSeasons" checked> Split Seasons</label>
+    </div>
+    <div class="row">
+      <label class="l" for="minIP" id="ipLabel">IP (min to max):</label><input type="number" id="minIP" value="20" min="0" step="5" aria-label="Minimum IP"> to <input type="number" id="maxIP" min="0" step="5" placeholder="no max" aria-label="Maximum IP">
+      <input type="search" id="q" placeholder="Search name or team">
+      <div class="viewing" id="viewing"></div>
+    </div>
+  </div>
+
+  <div class="actions"><button class="btn secondary" id="colsBtn" type="button">Columns</button><button class="btn" id="csvBtn" type="button">Download CSV</button></div>
+  <div id="pickerHost"></div>
+  <div class="status" id="status">Loading…</div>
+  <div class="tablewrap"><table id="tbl"></table></div>
+  <button class="btn secondary more hidden" id="more" type="button">Show all</button>
+  <div class="foot" id="foot"></div>
+</div>
+
+<script src="vickyplus-core.js"></script>
+<script src="vickyplus-ui.js"></script>
+<script>
+(function(){
+  var $=VPUI.$, esc=VPUI.esc;
+  var CTX, SC, PK, mode='player', sortKey='V', sortDir='desc', limit=250, shownRows=[], cols=[];
+
+  function setMode(m){
+    mode=m; limit=250;
+    document.querySelectorAll('#modes button').forEach(function(b){ b.classList.toggle('on', b.getAttribute('data-mode')===m); });
+    $('seasonRow').classList.toggle('hidden', m==='pj');
+    $('splitTeamsBox').classList.toggle('off', m!=='player');
+    $('splitSeasonsBox').classList.toggle('off', m==='pj');
+    $('minIP').value = m==='player'?20 : m==='team'?0 : 10; $('maxIP').value=''; $('ipLabel').textContent = m==='team' ? 'Pitcher IP (min to max):' : m==='pj' ? 'Min IP:' : 'IP (min to max):'; $('maxIP').classList.toggle('hidden', m==='pj');
+    sortKey = m==='pj'?'PV':'V'; sortDir='desc'; render();
+  }
+  function opts(){
+    var single=$('single').value, from=parseInt($('from').value), to=parseInt($('to').value);
+    if(single){ from=to=parseInt(single); } else if(from>to){ var t=from; from=to; to=t; }
+    return {mode:mode==='team'?'team':'player', from:from, to:to, team:$('team').value, splitTeams:$('splitTeams').checked,
+            splitSeasons:$('splitSeasons').checked, role:$('role').value, minIP:parseFloat($('minIP').value)||0, maxIP:($('maxIP').value===''?null:parseFloat($('maxIP').value)), q:$('q').value.trim()};
+  }
+  function buildCols(o){
+    var link=function(r,s){ return CTX.idCol && r.id ? '<a href="player.html?id='+encodeURIComponent(r.id)+'">'+esc(s)+'</a>' : esc(s); };
+    var c=[];
+    if(mode==='team') c.push({k:'Name',label:'Team',txt:true,get:function(r){return r.Name;},html:function(r,s){ return '<a href="#" data-team="'+esc(r.Name)+'">'+esc(s)+'</a>'; }});
+    else c.push({k:'Name',label:'Name',txt:true,get:function(r){return r.Name;},html:link});
+    if(mode==='team') c.push({k:'pitchers',label:'Pitchers',get:function(r){return r.pitchers;},fmt:function(v){return String(v);}});
+    if(mode!=='pj' && o.from!==o.to) c.push({k:'Season',label:'Season',get:function(r){return r.Season;},fmt:function(v,r){return r.SeasonLabel;}});
+    var d0=function(v){ return v==null?'':String(Math.round(v)); };
+    if(mode==='pj'){
+      var P=VP.project(SC);
+      c.push({k:'V',label:'Vicky+ ('+P.season+')',get:function(r){return r.V;},fmt:d0});
+      c.push({k:'PV',label:'Proj Vicky+',bold:true,get:function(r){return r.PV;},fmt:d0});
+      c.push({k:'PT',label:'Proj '+P.target,get:function(r){return r.PT;},fmt:function(v){return v==null?'':v.toFixed(2);}});
+      c.push({k:'rel',label:'Reliability',get:function(r){return r.rel;},fmt:function(v){return (v*100).toFixed(0)+'%';}});
+    } else c.push({k:'V',label:'Vicky+',bold:true,get:function(r){return r.V;},fmt:d0});
+    return c.concat(PK.cols(mode==='team'?'Team':null));
+  }
+  function rowsFor(o){
+    if(mode!=='pj') return VP.view(SC,o);
+    var q=o.q.toLowerCase();
+    return VP.project(SC).rows.filter(function(r){
+      if(o.role!=='all' && r.role!==o.role) return false;
+      if(r.IPt<o.minIP) return false;
+      if(o.team!=='all' && !r.rows.some(function(s){ return s.Team===o.team; })) return false;
+      if(q && (r.Name+' '+r.Team).toLowerCase().indexOf(q)<0) return false;
+      return true;
+    });
+  }
+  function render(){
+    if(!SC) return;
+    var o=opts(); cols=buildCols(o);
+    var col=cols.filter(function(c){return c.k===sortKey;})[0];
+    if(!col){ sortKey=mode==='pj'?'PV':'V'; sortDir='desc'; col=cols.filter(function(c){return c.k===sortKey;})[0]; }
+    var list=VPUI.sortRows(rowsFor(o),col,sortDir); shownRows=list; var top=list.slice(0,limit);
+    VPUI.drawTable({el:$('tbl'), cols:cols, rows:top, sortKey:sortKey, sortDir:sortDir, rank:true, onSort:function(k){
+      var c=cols.filter(function(x){return x.k===k;})[0];
+      if(sortKey===k) sortDir=sortDir==='asc'?'desc':'asc'; else { sortKey=k; sortDir=(c.txt||c.lowBest)?'asc':'desc'; }
+      render();
+    }});
+    $('status').className='status';
+    $('status').textContent=list.length+' '+(mode==='team'?'teams':(o.splitSeasons&&o.from!==o.to&&mode!=='pj'?'pitcher-seasons':'pitchers'))+(list.length>top.length?' (showing top '+top.length+')':'');
+    $('more').classList.toggle('hidden', list.length<=top.length);
+    $('viewing').textContent = mode==='pj' ? 'Projecting '+(SC.seasons[SC.seasons.length-1]+1)+' from '+SC.seasons[SC.seasons.length-1] : 'Currently viewing seasons between '+o.from+' and '+o.to;
+    $('foot').textContent=VPUI.inputsNote(CTX)+(mode==='team'?' Team rows combine the pitchers who fall inside the IP range (a pitcher\'s IP with that team'+(o.splitSeasons?' in that season':' across the seasons shown')+'); rates are IP-weighted averages and Vicky+ is IP-weighted.':'');
+  }
+
+  VP.fetchData('vickyplus-data.json').then(function(data){
+    CTX=VP.load(data); SC=VP.score(CTX);
+    $('pickerHost').innerHTML=VPUI.PICKER_HTML;
+    PK=new VPUI.Picker(CTX,render);
+    var ys=SC.seasons.slice().reverse(), opt=function(a){ return a.map(function(y){return '<option value="'+y+'">'+y+'</option>';}).join(''); };
+    $('team').innerHTML='<option value="all">All Teams</option>'+SC.teams.map(function(t){return '<option>'+esc(t)+'</option>';}).join('');
+    $('single').innerHTML='<option value="">Select</option>'+opt(ys); $('single').value=String(ys[0]);
+    $('from').innerHTML=opt(SC.seasons); $('to').innerHTML=opt(ys); $('from').value=String(SC.seasons[0]); $('to').value=String(ys[0]);
+    if(!CTX.recs.some(function(r){return 'Team' in CTX.idx;})) $('team').disabled=true;
+    ['team','splitTeams','role','single','from','to','splitSeasons','minIP','maxIP','q'].forEach(function(id){
+      $(id).addEventListener('input',function(){ if(id==='from'||id==='to') $('single').value=''; limit=250; render(); });
+    });
+    document.querySelectorAll('#modes button').forEach(function(b){ b.addEventListener('click',function(){ setMode(b.getAttribute('data-mode')); }); });
+    $('more').addEventListener('click',function(){ limit=1e9; render(); });
+    $('csvBtn').addEventListener('click',function(){ VPUI.downloadCSV(cols,shownRows,'vickyplus_'+mode+'.csv',true); });
+    $('tbl').addEventListener('click',function(e){
+      var t=e.target.getAttribute && e.target.getAttribute('data-team'); if(!t) return;
+      e.preventDefault(); $('team').value=t; setMode('player');
+    });
+    render();
+  }).catch(function(e){
+    $('status').className='status err';
+    $('status').textContent=(location.protocol==='file:'?'Open this page from the website (or a local server); browsers block loading the data file from a local file. ':'')+e.message;
+  });
+})();
+</script>
+</body>
+</html>

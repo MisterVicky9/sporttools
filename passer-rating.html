@@ -1,0 +1,694 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Passer Rating Calculator</title>
+<style>
+  *{box-sizing:border-box;}
+  html, body{ max-width:100%; overflow-x:hidden; }
+  body{ font-family:'Segoe UI', Arial, sans-serif; background:#e8e8e8; margin:0; padding:24px; color:#222; }
+  @media (max-width:600px){ body{ padding:12px; } }
+  .page-nav{ margin:0 0 16px 0; }
+  .page-nav a{ display:inline-block; font-size:13px; font-weight:600; color:#0b5cab; text-decoration:none; background:#eaf2fb; padding:8px 14px; border-radius:8px; }
+  .page-nav a:hover{ background:#dbe9fa; }
+  h2.pagetitle{ margin:0 0 4px 0; font-size:22px; }
+  .calc-card{ background:#fff; border-radius:12px; padding:22px; max-width:600px; box-shadow:0 2px 8px rgba(0,0,0,0.12); }
+  .calc-card h3{ margin:0 0 4px 0; font-size:18px; }
+  .formula{ font-family:'Cambria','Georgia',serif; font-style:italic; background:#f5f5f5; padding:10px 14px; border-radius:8px; font-size:13.5px; margin:10px 0 18px 0; color:#444; line-height:1.5; }
+  .field-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(110px,1fr)); gap:10px 14px; }
+  .field-grid div{ display:flex; flex-direction:column; }
+  .field-grid label{ font-size:12px; font-weight:600; color:#444; margin-bottom:3px; }
+  .field-grid input, .field-grid select{ padding:8px; border:1px solid #ccc; border-radius:6px; font-size:14px; width:100%; }
+  .section-label{ font-size:13px; font-weight:700; display:block; margin:16px 0 8px; }
+  .calc-card button{ margin-top:16px; background:#222; color:#fff; border:none; border-radius:6px; padding:11px 20px; font-size:14px; font-weight:600; cursor:pointer; }
+  .calc-card button:hover{ background:#000; }
+  .calc-card button.secondary{ background:#888; }
+  .toggle-btn{ background:none; border:none; color:#0b5cab; font-size:13px; font-weight:600; cursor:pointer; padding:0; text-decoration:underline; }
+  .result-box{ margin-top:18px; padding:14px 16px; border-radius:8px; background:#f0f7f0; border:1px solid #cfe8cf; display:none; }
+  .result-box.show{ display:block; }
+  .result-box .headline{ font-size:26px; font-weight:800; color:#1a5c1a; }
+  .result-box .breakdown{ font-size:13px; color:#555; margin-top:8px; line-height:1.7; }
+  .hint{ font-size:12px; color:#888; margin-top:4px; line-height:1.4; }
+  .league-row{ margin-bottom:16px; }
+  .league-row label{ font-size:13px; font-weight:700; margin-right:8px; }
+  .league-row select{ padding:7px 10px; border:1px solid #ccc; border-radius:6px; font-size:14px; }
+
+  .headshot-row{ display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+  .player-name-input{
+    border:none; border-bottom:2px solid #ccc; background:none; font-size:16px; font-weight:700;
+    padding:4px 2px; outline:none; color:#111;
+  }
+  .player-name-input:focus{ border-bottom-color:#0b1e33; }
+  .team-select{
+    border:none; border-bottom:2px solid #ccc; background:none; font-size:14px; font-weight:600;
+    padding:5px 2px; outline:none; color:#111; max-width:190px;
+  }
+  .team-select:focus{ border-bottom-color:#0b1e33; }
+  .headshot-thumb{ cursor:pointer; display:inline-block; vertical-align:middle; }
+  .headshot-thumb.empty .headshot-placeholder{
+    font-size:13px; font-weight:600; color:#0b5cab; text-decoration:underline;
+  }
+  .headshot-thumb.has-photo{
+    width:64px; height:64px; border-radius:50%; overflow:hidden; border:3px solid #0b1e33;
+  }
+  .headshot-thumb.has-photo img{ width:100%; height:100%; object-fit:cover; }
+
+  .extra-col-block{ margin-top:18px; padding-top:18px; border-top:2px dashed #ccc; }
+  .extra-col-block .col-label{ font-size:12px; font-weight:800; color:#888; text-transform:uppercase; letter-spacing:.04em; margin-bottom:10px; }
+</style>
+</head>
+<body>
+
+<div class="page-nav"><a href="index.html">← Home</a></div>
+<h2 class="pagetitle">Passer Rating Calculator</h2>
+
+<div class="league-row">
+  <label>League:</label>
+  <select id="league" onchange="onLeagueChange()">
+    <option value="NFL">NFL</option>
+    <option value="NCAA">NCAA (College)</option>
+  </select>
+</div>
+
+<div class="league-row">
+  <label>Card Theme:</label>
+  <select id="teamTheme" onchange="applyTeamTheme()"></select>
+  <div class="hint" style="margin-top:6px;">Colors the exported graphic's header and accent strip — same colors Stat Card Builder uses for that team. This is separate from each column's own Team field below.</div>
+</div>
+
+<div class="headshot-row">
+  <div class="headshot-thumb empty" id="headshotThumb" onclick="document.getElementById('headshotInput').click()">
+    <span class="headshot-placeholder">+ Add Photo</span>
+  </div>
+  <input type="file" id="headshotInput" accept="image/*" style="display:none;">
+  <input type="text" id="playerName" placeholder="Player name (optional)" class="player-name-input">
+  <select id="teamName" class="team-select">
+    <option value="">Team (optional)</option>
+  </select>
+</div>
+
+<div class="calc-card">
+  <h3>Passer Rating</h3>
+  <div class="formula" id="formulaText"></div>
+
+  <label class="section-label">Box score stats</label>
+  <div class="field-grid">
+    <div><label>Comp</label><input type="number" id="Comp"></div>
+    <div><label>Att</label><input type="number" id="Att"></div>
+    <div><label>Yards</label><input type="number" id="Yds"></div>
+    <div><label>TD</label><input type="number" id="TD"></div>
+    <div><label>Int</label><input type="number" id="Int"></div>
+  </div>
+  <div class="hint">NFL rating caps each component between 0 and 2.375. NCAA rating is uncapped and uses a different formula entirely.</div>
+
+  <div id="extraColumnsContainer"></div>
+
+  <button type="button" class="toggle-btn" onclick="addExtraColumn()" id="addColBtn" style="display:block; margin-top:18px;">+ Add Another Column ▾</button>
+  <div class="hint" id="colCountHint">1 of 6 columns used.</div>
+
+  <button onclick="calc()">Calculate</button>
+
+  <div class="result-box" id="result">
+    <div class="headline" id="headline"></div>
+    <div class="breakdown" id="breakdown"></div>
+    <button onclick="downloadGraphic()" style="margin-top:14px;">Download Graphic</button>
+    <button onclick="downloadJSON()" class="secondary" style="margin-top:8px;">Download JSON (for Stat Card Builder)</button>
+  </div>
+</div>
+
+<script>
+const NFL_TEAMS = ["Arizona Cardinals","Atlanta Falcons","Baltimore Ravens","Buffalo Bills","Carolina Panthers","Chicago Bears","Cincinnati Bengals","Cleveland Browns","Dallas Cowboys","Denver Broncos","Detroit Lions","Green Bay Packers","Houston Texans","Indianapolis Colts","Jacksonville Jaguars","Kansas City Chiefs","Las Vegas Raiders","Los Angeles Chargers","Los Angeles Rams","Miami Dolphins","Minnesota Vikings","New England Patriots","New Orleans Saints","New York Giants","New York Jets","Philadelphia Eagles","Pittsburgh Steelers","San Francisco 49ers","Seattle Seahawks","Tampa Bay Buccaneers","Tennessee Titans","Washington Commanders"];
+const NCAA_TEAMS = ["Boston College","California","Clemson","Duke","Florida State","Georgia Tech","Louisville","Miami (FL)","NC State","North Carolina","Pittsburgh","SMU","Stanford","Syracuse","Virginia","Virginia Tech","Wake Forest","Arizona","Arizona State","Baylor","BYU","Cincinnati","Colorado","Houston","Iowa State","Kansas","Kansas State","Oklahoma State","TCU","Texas Tech","UCF","Utah","West Virginia","Illinois","Indiana","Iowa","Maryland","Michigan","Michigan State","Minnesota","Nebraska","Northwestern","Ohio State","Oregon","Penn State","Purdue","Rutgers","UCLA","USC","Washington","Wisconsin","Alabama","Arkansas","Auburn","Florida","Georgia","Kentucky","LSU","Mississippi State","Missouri","Ole Miss","Oklahoma","South Carolina","Tennessee","Texas","Texas A&M","Vanderbilt","Army","Charlotte","East Carolina","Florida Atlantic","Memphis","Navy","North Texas","Rice","South Florida","Temple","Tulane","Tulsa","UAB","UTSA","Delaware","FIU","Jacksonville State","Kennesaw State","Liberty","Louisiana Tech","Middle Tennessee","Missouri State","New Mexico State","Sam Houston","UTEP","Western Kentucky","Akron","Ball State","Bowling Green","Buffalo","Central Michigan","Eastern Michigan","Kent State","Miami (OH)","Northern Illinois","Ohio","Toledo","Western Michigan","Air Force","Boise State","Colorado State","Fresno State","Hawaii","Nevada","New Mexico","San Diego State","San Jose State","UNLV","Utah State","Wyoming","Oregon State","Washington State","Appalachian State","Arkansas State","Coastal Carolina","Georgia Southern","Georgia State","James Madison","Louisiana","Louisiana-Monroe","Marshall","Old Dominion","South Alabama","Southern Miss","Texas State","Troy","Notre Dame","UConn","UMass"];
+
+const MAX_COLUMNS = 6;
+let extraColumnIndices = [];
+let colCounter = 0;
+
+// Same color data as statcard.html's LEAGUE_TEAMS, so a theme picked here
+// matches exactly if the JSON is loaded into the Stat Card Builder.
+const TEAM_THEMES = {
+  "NFL": {
+    "Arizona Cardinals": {primary:"#97233F", accent:"#000000", light:"#FFB612"},
+    "Atlanta Falcons": {primary:"#A71930", accent:"#000000", light:"#A5ACAF"},
+    "Baltimore Ravens": {primary:"#241773", accent:"#000000", light:"#9E7C0C"},
+    "Buffalo Bills": {primary:"#00338D", accent:"#C60C30", light:"#C9D8ED"},
+    "Carolina Panthers": {primary:"#0085CA", accent:"#101820", light:"#BFC0BF"},
+    "Chicago Bears": {primary:"#0B162A", accent:"#C83803", light:"#C9D8ED"},
+    "Cincinnati Bengals": {primary:"#FB4F14", accent:"#000000", light:"#FB4F14"},
+    "Cleveland Browns": {primary:"#311D00", accent:"#FF3C00", light:"#FF3C00"},
+    "Dallas Cowboys": {primary:"#041E42", accent:"#869397", light:"#B0B7BC"},
+    "Denver Broncos": {primary:"#FB4F14", accent:"#002244", light:"#FB4F14"},
+    "Detroit Lions": {primary:"#0076B6", accent:"#B0B7BC", light:"#C9D8ED"},
+    "Green Bay Packers": {primary:"#203731", accent:"#FFB612", light:"#FFB612"},
+    "Houston Texans": {primary:"#03202F", accent:"#A71930", light:"#A71930"},
+    "Indianapolis Colts": {primary:"#002C5F", accent:"#A2AAAD", light:"#C9D8ED"},
+    "Jacksonville Jaguars": {primary:"#101820", accent:"#D7A22A", light:"#006778"},
+    "Kansas City Chiefs": {primary:"#E31837", accent:"#FFB81C", light:"#FFB81C"},
+    "Las Vegas Raiders": {primary:"#000000", accent:"#A5ACAF", light:"#A5ACAF"},
+    "Los Angeles Chargers": {primary:"#0080C6", accent:"#FFC20E", light:"#FFC20E"},
+    "Los Angeles Rams": {primary:"#003594", accent:"#FFA300", light:"#FFA300"},
+    "Miami Dolphins": {primary:"#008E97", accent:"#FC4C02", light:"#005778"},
+    "Minnesota Vikings": {primary:"#4F2683", accent:"#FFC62F", light:"#FFC62F"},
+    "New England Patriots": {primary:"#002244", accent:"#C60C30", light:"#B0B7BC"},
+    "New Orleans Saints": {primary:"#D3BC8D", accent:"#101820", light:"#D3BC8D"},
+    "New York Giants": {primary:"#0B2265", accent:"#A71930", light:"#A71930"},
+    "New York Jets": {primary:"#125740", accent:"#000000", light:"#125740"},
+    "Philadelphia Eagles": {primary:"#004C54", accent:"#A5ACAF", light:"#ACC0C6"},
+    "Pittsburgh Steelers": {primary:"#FFB612", accent:"#101820", light:"#FFB612"},
+    "San Francisco 49ers": {primary:"#AA0000", accent:"#B3995D", light:"#B3995D"},
+    "Seattle Seahawks": {primary:"#002244", accent:"#69BE28", light:"#69BE28"},
+    "Tampa Bay Buccaneers": {primary:"#D50A0A", accent:"#34302B", light:"#FF7900"},
+    "Tennessee Titans": {primary:"#0C2340", accent:"#4B92DB", light:"#C8102E"},
+    "Washington Commanders": {primary:"#5A1414", accent:"#FFB612", light:"#FFB612"}
+  },
+  "NCAA (FBS)": {
+    "Boston College": {primary:"#98002E", accent:"#000000", light:"#BC9B6A"},
+    "California": {primary:"#003262", accent:"#000000", light:"#FDB515"},
+    "Clemson": {primary:"#F56600", accent:"#522D80", light:"#F56600"},
+    "Duke": {primary:"#003087", accent:"#000000", light:"#A7A9AC"},
+    "Florida State": {primary:"#782F40", accent:"#000000", light:"#CEB888"},
+    "Georgia Tech": {primary:"#B3A369", accent:"#003057", light:"#B3A369"},
+    "Louisville": {primary:"#AD0000", accent:"#000000", light:"#AD0000"},
+    "Miami (FL)": {primary:"#F47321", accent:"#005030", light:"#F47321"},
+    "NC State": {primary:"#CC0000", accent:"#000000", light:"#CC0000"},
+    "North Carolina": {primary:"#7BAFD4", accent:"#13294B", light:"#7BAFD4"},
+    "Pittsburgh": {primary:"#003594", accent:"#000000", light:"#FFB81C"},
+    "SMU": {primary:"#C8102E", accent:"#0033A0", light:"#C8102E"},
+    "Stanford": {primary:"#8C1515", accent:"#000000", light:"#8C1515"},
+    "Syracuse": {primary:"#D44500", accent:"#000000", light:"#D44500"},
+    "Virginia": {primary:"#232D4B", accent:"#E57200", light:"#E57200"},
+    "Virginia Tech": {primary:"#630031", accent:"#CF4420", light:"#CF4420"},
+    "Wake Forest": {primary:"#9E7E38", accent:"#000000", light:"#9E7E38"},
+    "Arizona": {primary:"#AB0520", accent:"#0C234B", light:"#AB0520"},
+    "Arizona State": {primary:"#8C1D40", accent:"#000000", light:"#FFC627"},
+    "Baylor": {primary:"#154734", accent:"#000000", light:"#FFB81C"},
+    "BYU": {primary:"#002E5D", accent:"#000000", light:"#C5C5C5"},
+    "Cincinnati": {primary:"#E00122", accent:"#000000", light:"#E00122"},
+    "Colorado": {primary:"#CFB87C", accent:"#000000", light:"#CFB87C"},
+    "Houston": {primary:"#C8102E", accent:"#000000", light:"#C8102E"},
+    "Iowa State": {primary:"#C8102E", accent:"#000000", light:"#F1BE48"},
+    "Kansas": {primary:"#0051BA", accent:"#E8000D", light:"#0051BA"},
+    "Kansas State": {primary:"#512888", accent:"#000000", light:"#A7A9AC"},
+    "Oklahoma State": {primary:"#FF7300", accent:"#000000", light:"#FF7300"},
+    "TCU": {primary:"#4D1979", accent:"#000000", light:"#A3A9AC"},
+    "Texas Tech": {primary:"#CC0000", accent:"#000000", light:"#CC0000"},
+    "UCF": {primary:"#000000", accent:"#FFC904", light:"#FFC904"},
+    "Utah": {primary:"#CC0000", accent:"#000000", light:"#CC0000"},
+    "West Virginia": {primary:"#002855", accent:"#000000", light:"#EAAA00"},
+    "Illinois": {primary:"#E84A27", accent:"#13294B", light:"#E84A27"},
+    "Indiana": {primary:"#990000", accent:"#000000", light:"#EEEDEB"},
+    "Iowa": {primary:"#FFCD00", accent:"#000000", light:"#FFCD00"},
+    "Maryland": {primary:"#E21833", accent:"#000000", light:"#FFD200"},
+    "Michigan": {primary:"#00274C", accent:"#000000", light:"#FFCB05"},
+    "Michigan State": {primary:"#18453B", accent:"#000000", light:"#FFFFFF"},
+    "Minnesota": {primary:"#7A0019", accent:"#000000", light:"#FFC72C"},
+    "Nebraska": {primary:"#E41C38", accent:"#000000", light:"#E41C38"},
+    "Northwestern": {primary:"#4E2A84", accent:"#000000", light:"#4E2A84"},
+    "Ohio State": {primary:"#BB0000", accent:"#666666", light:"#BB0000"},
+    "Oregon": {primary:"#154733", accent:"#000000", light:"#FEE123"},
+    "Penn State": {primary:"#041E42", accent:"#000000", light:"#FFFFFF"},
+    "Purdue": {primary:"#CEB888", accent:"#000000", light:"#CEB888"},
+    "Rutgers": {primary:"#CC0033", accent:"#000000", light:"#CC0033"},
+    "UCLA": {primary:"#2D68C4", accent:"#000000", light:"#F2A900"},
+    "USC": {primary:"#990000", accent:"#000000", light:"#FFC72C"},
+    "Washington": {primary:"#4B2E83", accent:"#000000", light:"#B7A57A"},
+    "Wisconsin": {primary:"#C5050C", accent:"#000000", light:"#C5050C"},
+    "Alabama": {primary:"#9E1B32", accent:"#000000", light:"#9E1B32"},
+    "Arkansas": {primary:"#9D2235", accent:"#000000", light:"#9D2235"},
+    "Auburn": {primary:"#0C2340", accent:"#E87722", light:"#E87722"},
+    "Florida": {primary:"#0021A5", accent:"#FA4616", light:"#FA4616"},
+    "Georgia": {primary:"#BA0C2F", accent:"#000000", light:"#BA0C2F"},
+    "Kentucky": {primary:"#0033A0", accent:"#000000", light:"#0033A0"},
+    "LSU": {primary:"#461D7C", accent:"#000000", light:"#FDD023"},
+    "Mississippi State": {primary:"#660000", accent:"#000000", light:"#660000"},
+    "Missouri": {primary:"#000000", accent:"#F1B82D", light:"#F1B82D"},
+    "Ole Miss": {primary:"#CE1126", accent:"#14213D", light:"#CE1126"},
+    "Oklahoma": {primary:"#841617", accent:"#000000", light:"#FDF9D8"},
+    "South Carolina": {primary:"#73000A", accent:"#000000", light:"#73000A"},
+    "Tennessee": {primary:"#FF8200", accent:"#000000", light:"#58595B"},
+    "Texas": {primary:"#BF5700", accent:"#333F48", light:"#BF5700"},
+    "Texas A&M": {primary:"#500000", accent:"#000000", light:"#500000"},
+    "Vanderbilt": {primary:"#866D4B", accent:"#000000", light:"#866D4B"},
+    "Army": {primary:"#000000", accent:"#D4BF91", light:"#D4BF91"},
+    "Charlotte": {primary:"#005035", accent:"#000000", light:"#A49665"},
+    "East Carolina": {primary:"#592A8A", accent:"#000000", light:"#FDC82F"},
+    "Florida Atlantic": {primary:"#003366", accent:"#000000", light:"#CC0000"},
+    "Memphis": {primary:"#003087", accent:"#000000", light:"#898D8D"},
+    "Navy": {primary:"#00205B", accent:"#000000", light:"#C5B783"},
+    "North Texas": {primary:"#00853E", accent:"#000000", light:"#00853E"},
+    "Rice": {primary:"#00205B", accent:"#000000", light:"#C6AA76"},
+    "South Florida": {primary:"#006747", accent:"#000000", light:"#CFC493"},
+    "Temple": {primary:"#9D2235", accent:"#000000", light:"#9D2235"},
+    "Tulane": {primary:"#006747", accent:"#418FDE", light:"#418FDE"},
+    "Tulsa": {primary:"#002D72", accent:"#000000", light:"#B9975B"},
+    "UAB": {primary:"#1E6B52", accent:"#000000", light:"#1E6B52"},
+    "UTSA": {primary:"#002A5C", accent:"#000000", light:"#F15A22"},
+    "Delaware": {primary:"#00539F", accent:"#000000", light:"#FFD200"},
+    "FIU": {primary:"#081E3F", accent:"#000000", light:"#B6862C"},
+    "Jacksonville State": {primary:"#A6192E", accent:"#000000", light:"#A6192E"},
+    "Kennesaw State": {primary:"#000000", accent:"#FFC629", light:"#FFC629"},
+    "Liberty": {primary:"#002D62", accent:"#000000", light:"#C41230"},
+    "Louisiana Tech": {primary:"#002F87", accent:"#000000", light:"#C8102E"},
+    "Middle Tennessee": {primary:"#0066CC", accent:"#000000", light:"#0066CC"},
+    "Missouri State": {primary:"#6E263D", accent:"#000000", light:"#6E263D"},
+    "New Mexico State": {primary:"#8C1D40", accent:"#000000", light:"#8C1D40"},
+    "Sam Houston": {primary:"#FF6600", accent:"#002E5D", light:"#FF6600"},
+    "UTEP": {primary:"#FF8200", accent:"#041E42", light:"#FF8200"},
+    "Western Kentucky": {primary:"#C8102E", accent:"#000000", light:"#C8102E"},
+    "Akron": {primary:"#041E42", accent:"#000000", light:"#A7A9AC"},
+    "Ball State": {primary:"#BA0C2F", accent:"#000000", light:"#BA0C2F"},
+    "Bowling Green": {primary:"#FE5000", accent:"#4F2C1D", light:"#FE5000"},
+    "Buffalo": {primary:"#005BBB", accent:"#000000", light:"#005BBB"},
+    "Central Michigan": {primary:"#6A0032", accent:"#000000", light:"#FFC82E"},
+    "Eastern Michigan": {primary:"#006633", accent:"#000000", light:"#006633"},
+    "Kent State": {primary:"#002664", accent:"#000000", light:"#EAAB00"},
+    "Miami (OH)": {primary:"#C41230", accent:"#000000", light:"#C41230"},
+    "Northern Illinois": {primary:"#BA0C2F", accent:"#000000", light:"#BA0C2F"},
+    "Ohio": {primary:"#00694E", accent:"#000000", light:"#00694E"},
+    "Toledo": {primary:"#00246B", accent:"#000000", light:"#FFCD00"},
+    "Western Michigan": {primary:"#7A2A2E", accent:"#000000", light:"#FFB612"},
+    "Air Force": {primary:"#003087", accent:"#000000", light:"#8A8D8F"},
+    "Boise State": {primary:"#0033A0", accent:"#D64309", light:"#D64309"},
+    "Colorado State": {primary:"#1E4D2B", accent:"#000000", light:"#C8C372"},
+    "Fresno State": {primary:"#DB0032", accent:"#002F87", light:"#DB0032"},
+    "Hawaii": {primary:"#024731", accent:"#000000", light:"#C8B568"},
+    "Nevada": {primary:"#003366", accent:"#000000", light:"#A7A9AC"},
+    "New Mexico": {primary:"#BA0C2F", accent:"#000000", light:"#A7A9AC"},
+    "San Diego State": {primary:"#A6192E", accent:"#000000", light:"#A6192E"},
+    "San Jose State": {primary:"#0055A2", accent:"#000000", light:"#E5A823"},
+    "UNLV": {primary:"#CF0A2C", accent:"#000000", light:"#CF0A2C"},
+    "Utah State": {primary:"#0F2439", accent:"#000000", light:"#0F2439"},
+    "Wyoming": {primary:"#492F24", accent:"#000000", light:"#FFC425"},
+    "Oregon State": {primary:"#DC4405", accent:"#000000", light:"#DC4405"},
+    "Washington State": {primary:"#981E32", accent:"#5E6A71", light:"#981E32"},
+    "Appalachian State": {primary:"#000000", accent:"#FFC72C", light:"#FFC72C"},
+    "Arkansas State": {primary:"#CC092F", accent:"#000000", light:"#CC092F"},
+    "Coastal Carolina": {primary:"#006F71", accent:"#000000", light:"#006F71"},
+    "Georgia Southern": {primary:"#011E41", accent:"#000000", light:"#011E41"},
+    "Georgia State": {primary:"#0039A6", accent:"#000000", light:"#0039A6"},
+    "James Madison": {primary:"#450084", accent:"#000000", light:"#CBB677"},
+    "Louisiana": {primary:"#CE181E", accent:"#000000", light:"#CE181E"},
+    "Louisiana-Monroe": {primary:"#840029", accent:"#000000", light:"#FFB81C"},
+    "Marshall": {primary:"#00B140", accent:"#000000", light:"#00B140"},
+    "Old Dominion": {primary:"#003057", accent:"#000000", light:"#A5ACAF"},
+    "South Alabama": {primary:"#00205B", accent:"#C41230", light:"#C41230"},
+    "Southern Miss": {primary:"#FFAA3C", accent:"#000000", light:"#FFAA3C"},
+    "Texas State": {primary:"#501214", accent:"#000000", light:"#C69214"},
+    "Troy": {primary:"#8A2432", accent:"#000000", light:"#A7A9AC"},
+    "Notre Dame": {primary:"#0C2340", accent:"#000000", light:"#C99700"},
+    "UConn": {primary:"#000E2F", accent:"#000000", light:"#E4002B"},
+    "UMass": {primary:"#881C1C", accent:"#000000", light:"#881C1C"}
+  }
+};
+// "Default" theme: not a team, so it round-trips as team:'' into Stat Card Builder.
+// FanGraphs green / Baseball Savant teal / Baseball-Reference red (from each site's
+// own brand color, verified via their pages' theme-color meta tags where available).
+const DEFAULT_THEME = {primary:"#50AE26", accent:"#146680", light:"#86081A"};
+
+function currentTeamList(){
+  return document.getElementById('league').value === 'NFL' ? NFL_TEAMS : NCAA_TEAMS;
+}
+function teamOptionsHTML(){
+  return '<option value="">Team (optional)</option>' + currentTeamList().map(t=>`<option value="${t}">${t}</option>`).join('');
+}
+function refreshAllTeamDropdowns(){
+  document.querySelectorAll('.team-select').forEach(sel=>{ sel.innerHTML = teamOptionsHTML(); });
+}
+
+function themeLeagueKey(){
+  return document.getElementById('league').value === 'NFL' ? 'NFL' : 'NCAA (FBS)';
+}
+function refreshTeamThemeDropdown(){
+  const sel = document.getElementById('teamTheme');
+  const prevValue = sel.value;
+  const teams = TEAM_THEMES[themeLeagueKey()];
+  sel.innerHTML = '<option value="__default__">Default</option>' +
+    '<optgroup label="' + themeLeagueKey() + ' Team Colors">' +
+    Object.keys(teams).map(t=>`<option value="${t}">${t}</option>`).join('') +
+    '</optgroup>';
+  sel.value = teams[prevValue] ? prevValue : '__default__';
+  applyTeamTheme();
+}
+function applyTeamTheme(){
+  const sel = document.getElementById('teamTheme');
+  const teams = TEAM_THEMES[themeLeagueKey()];
+  window._cardTheme = (sel.value !== '__default__' && teams[sel.value]) ? teams[sel.value] : DEFAULT_THEME;
+}
+
+function onLeagueChange(){
+  refreshAllTeamDropdowns();
+  refreshTeamThemeDropdown();
+  updateFormulaText();
+}
+function updateFormulaText(){
+  const league = document.getElementById('league').value;
+  document.getElementById('formulaText').innerHTML = league === 'NFL'
+    ? 'a = clamp(((Comp/Att)&minus;0.3)&times;5, 0, 2.375)<br>b = clamp(((Yds/Att)&minus;3)&times;0.25, 0, 2.375)<br>c = clamp((TD/Att)&times;20, 0, 2.375)<br>d = clamp(2.375&minus;((Int/Att)&times;25), 0, 2.375)<br>Rating = ((a+b+c+d)/6)&times;100'
+    : 'Rating = (8.4&times;Yards + 330&times;TD + 100&times;Comp &minus; 200&times;Int) / Att';
+}
+refreshAllTeamDropdowns();
+refreshTeamThemeDropdown();
+updateFormulaText();
+
+function val(id){ const el = document.getElementById(id); return el ? (parseFloat(el.value) || 0) : 0; }
+function clamp(v, lo, hi){ return Math.max(lo, Math.min(hi, v)); }
+
+function updateColCountHint(){
+  const total = 1 + extraColumnIndices.length;
+  document.getElementById('colCountHint').textContent = total + ' of ' + MAX_COLUMNS + ' columns used.';
+  document.getElementById('addColBtn').style.display = total >= MAX_COLUMNS ? 'none' : 'block';
+}
+
+function addExtraColumn(){
+  if(1 + extraColumnIndices.length >= MAX_COLUMNS) return;
+  colCounter++;
+  const idx = colCounter;
+  extraColumnIndices.push(idx);
+
+  const block = document.createElement('div');
+  block.className = 'extra-col-block';
+  block.id = 'colBlock_' + idx;
+  block.innerHTML = `
+    <div class="col-label">Column ${1+extraColumnIndices.length}</div>
+    <div class="headshot-row" style="margin-bottom:16px;">
+      <div class="headshot-thumb empty" id="headshotThumb_${idx}" onclick="document.getElementById('headshotInput_${idx}').click()">
+        <span class="headshot-placeholder">+ Add Photo</span>
+      </div>
+      <input type="file" id="headshotInput_${idx}" accept="image/*" style="display:none;">
+      <input type="text" id="playerName_${idx}" placeholder="Player name (optional)" class="player-name-input">
+      <select id="teamName_${idx}" class="team-select">${teamOptionsHTML()}</select>
+    </div>
+    <label class="section-label">Box score stats</label>
+    <div class="field-grid">
+      <div><label>Comp</label><input type="number" id="Comp_${idx}"></div>
+      <div><label>Att</label><input type="number" id="Att_${idx}"></div>
+      <div><label>Yards</label><input type="number" id="Yds_${idx}"></div>
+      <div><label>TD</label><input type="number" id="TD_${idx}"></div>
+      <div><label>Int</label><input type="number" id="Int_${idx}"></div>
+    </div>
+    <button type="button" class="secondary" onclick="removeExtraColumn(${idx})">Remove This Column</button>
+  `;
+  document.getElementById('extraColumnsContainer').appendChild(block);
+  setupHeadshotUpload('headshotInput_'+idx, 'headshotThumb_'+idx, '_headshotDataUrl_'+idx);
+  updateColCountHint();
+}
+
+function removeExtraColumn(idx){
+  const block = document.getElementById('colBlock_' + idx);
+  if(block) block.remove();
+  extraColumnIndices = extraColumnIndices.filter(i => i !== idx);
+  delete window['_headshotDataUrl_' + idx];
+  extraColumnIndices.forEach((i, pos) => {
+    const b = document.getElementById('colBlock_' + i);
+    if(b) b.querySelector('.col-label').textContent = 'Column ' + (2 + pos);
+  });
+  updateColCountHint();
+}
+
+function computePasserRating(suffix){
+  const Comp = val('Comp'+suffix), Att = val('Att'+suffix), Yds = val('Yds'+suffix),
+        TD = val('TD'+suffix), Int = val('Int'+suffix);
+  if(Att <= 0) return null;
+  const league = document.getElementById('league').value;
+  let rating;
+  if(league === 'NFL'){
+    const a = clamp(((Comp/Att)-0.3)*5, 0, 2.375);
+    const b = clamp(((Yds/Att)-3)*0.25, 0, 2.375);
+    const c = clamp((TD/Att)*20, 0, 2.375);
+    const d = clamp(2.375-((Int/Att)*25), 0, 2.375);
+    rating = ((a+b+c+d)/6)*100;
+    return { Comp, Att, Yds, TD, Int, a, b, c, d, rating };
+  } else {
+    rating = (8.4*Yds + 330*TD + 100*Comp - 200*Int) / Att;
+    return { Comp, Att, Yds, TD, Int, rating };
+  }
+}
+
+function calc(){
+  const base = computePasserRating('');
+  if(!base){ alert('Enter Att and the rest of the box score line.'); return; }
+
+  const league = document.getElementById('league').value;
+  document.getElementById('headline').textContent = 'Passer Rating: ' + base.rating.toFixed(1);
+  if(league === 'NFL'){
+    document.getElementById('breakdown').innerHTML =
+      `a = clamp(((${base.Comp}/${base.Att})&minus;0.3)&times;5, 0, 2.375) = ${base.a.toFixed(3)}<br>` +
+      `b = clamp(((${base.Yds}/${base.Att})&minus;3)&times;0.25, 0, 2.375) = ${base.b.toFixed(3)}<br>` +
+      `c = clamp((${base.TD}/${base.Att})&times;20, 0, 2.375) = ${base.c.toFixed(3)}<br>` +
+      `d = clamp(2.375&minus;((${base.Int}/${base.Att})&times;25), 0, 2.375) = ${base.d.toFixed(3)}<br>` +
+      `Rating = ((${base.a.toFixed(3)}+${base.b.toFixed(3)}+${base.c.toFixed(3)}+${base.d.toFixed(3)})/6)&times;100 = ${base.rating.toFixed(1)}`;
+  } else {
+    document.getElementById('breakdown').innerHTML =
+      `Rating = (8.4&times;${base.Yds} + 330&times;${base.TD} + 100&times;${base.Comp} &minus; 200&times;${base.Int}) / ${base.Att} = ${base.rating.toFixed(1)}`;
+  }
+  document.getElementById('result').classList.add('show');
+
+  const allResults = [base];
+  extraColumnIndices.forEach(idx=>{ allResults.push(computePasserRating('_'+idx)); });
+
+  const statFields = [
+    ['Comp', d=>d.Comp], ['Att', d=>d.Att], ['Yards', d=>d.Yds], ['TD', d=>d.TD], ['Int', d=>d.Int]
+  ];
+  window._graphicRows = statFields.map(([label, getter])=>{
+    const row = [label];
+    allResults.forEach(d=> row.push(d ? getter(d) : undefined));
+    return row;
+  });
+  const ratingRow = ['Rating'];
+  allResults.forEach(d=> ratingRow.push(d ? d.rating.toFixed(1) : undefined));
+  ratingRow.push(true);
+  window._graphicRows.push(ratingRow);
+  window._graphicTitle = league === 'NFL' ? 'Passer Rating' : 'College Passer Rating';
+}
+
+function downloadGraphic(){
+  if(!window._graphicRows) return;
+  downloadStatGraphic(window._graphicTitle || 'Passer Rating Calculator', window._graphicRows);
+}
+
+function gatherColumns(){
+  const columns = [{
+    photoUrl: window._headshotDataUrl,
+    name: (document.getElementById('playerName').value || '').trim(),
+    team: document.getElementById('teamName').value || ''
+  }];
+  extraColumnIndices.forEach(idx=>{
+    columns.push({
+      photoUrl: window['_headshotDataUrl_'+idx],
+      name: (document.getElementById('playerName_'+idx).value || '').trim(),
+      team: document.getElementById('teamName_'+idx).value || ''
+    });
+  });
+  return columns;
+}
+
+function downloadJSON(){
+  if(!window._graphicRows) return;
+  const columns = gatherColumns();
+
+  const themeSelVal = document.getElementById('teamTheme').value;
+  const state = {
+    version: 1,
+    title: window._graphicTitle || 'Passer Rating Comparison',
+    team: themeSelVal === '__default__' ? '' : themeSelVal,
+    cardStyle: 'table',
+    mainPhoto: null,
+    columns: columns.map(c => ({
+      label: c.name || c.team || 'Column',
+      color: '#111111',
+      photo: c.photoUrl || null
+    })),
+    rows: window._graphicRows.map(row=>{
+      const label = row[0];
+      const isResult = row[row.length-1] === true;
+      const valueCount = isResult ? row.length-2 : row.length-1;
+      const values = [];
+      for(let i=0; i<valueCount; i++){
+        values.push({ value: row[i+1] !== undefined ? String(row[i+1]) : '0', rawstat: '' });
+      }
+      return { label, isPctl: false, values };
+    })
+  };
+
+  const blob = new Blob([JSON.stringify(state, null, 2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = (window._graphicTitle || 'passer-rating-comparison').toLowerCase().replace(/[^a-z0-9]+/g,'-') + '.json';
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
+function setupHeadshotUpload(inputId, thumbId, storeKey){
+  document.getElementById(inputId).addEventListener('change', (e)=>{
+    const file = e.target.files && e.target.files[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev)=>{
+      const img = new Image();
+      img.onload = ()=>{
+        const size = Math.min(img.width, img.height);
+        const sx = (img.width-size)/2, sy = (img.height-size)/2;
+        const canvas = document.createElement('canvas');
+        canvas.width = 300; canvas.height = 300;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, sx, sy, size, size, 0, 0, 300, 300);
+        window[storeKey] = canvas.toDataURL('image/png');
+        const thumb = document.getElementById(thumbId);
+        thumb.classList.remove('empty'); thumb.classList.add('has-photo');
+        thumb.innerHTML = '';
+        const previewImg = document.createElement('img');
+        previewImg.src = window[storeKey];
+        thumb.appendChild(previewImg);
+      };
+      img.src = ev.target.result;
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  });
+}
+setupHeadshotUpload('headshotInput', 'headshotThumb', '_headshotDataUrl');
+
+// ---- Shared stat-graphic renderer (same on every calculator page) ----
+function downloadStatGraphic(title, rows){
+  const columns = gatherColumns();
+  loadColumnImages(columns, (loadedColumns)=>{ renderGraphicCanvas(title, rows, loadedColumns); });
+}
+
+function loadColumnImages(columns, callback){
+  let pending = 0;
+  columns.forEach(col=>{
+    if(col.photoUrl){
+      pending++;
+      const img = new Image();
+      img.onload = ()=>{ col.img = img; pending--; if(pending===0) callback(columns); };
+      img.src = col.photoUrl;
+    }
+  });
+  if(pending === 0) callback(columns);
+}
+
+function renderGraphicCanvas(title, rows, columns){
+  const scale = 2;
+  const numDataCols = columns.length;
+  const labelColW = 150;
+  const dataColW = 150;
+  const width = labelColW + dataColW*numDataCols;
+  const rowH = 40, accentH = 6;
+  const anyName = columns.some(c=>c.name);
+  const titleHeaderH = anyName ? 50 : 44;
+  const colBarH = 70;
+  const height = titleHeaderH + accentH + colBarH + rows.length*rowH + 16;
+
+  const canvas = document.createElement('canvas');
+  canvas.width = width*scale; canvas.height = height*scale;
+  const ctx = canvas.getContext('2d');
+  ctx.scale(scale, scale);
+
+  const cardRadius = 20, borderW = 4;
+  function roundRectPath(x, y, w, h, r){
+    ctx.beginPath();
+    ctx.moveTo(x+r, y);
+    ctx.arcTo(x+w, y,   x+w, y+h, r);
+    ctx.arcTo(x+w, y+h, x,   y+h, r);
+    ctx.arcTo(x,   y+h, x,   y,   r);
+    ctx.arcTo(x,   y,   x+w, y,   r);
+    ctx.closePath();
+  }
+
+  ctx.fillStyle = '#ffffff'; ctx.fillRect(0,0,width,height);
+
+  roundRectPath(0, 0, width, height, cardRadius);
+  ctx.save();
+  ctx.clip();
+
+  const theme = window._cardTheme || DEFAULT_THEME;
+  ctx.fillStyle = theme.primary; ctx.fillRect(0,0,width,titleHeaderH);
+  ctx.fillStyle = '#ffffff'; ctx.font = 'bold 18px Arial'; ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
+  ctx.fillText(title, 16, titleHeaderH/2);
+
+  ctx.fillStyle = theme.accent; ctx.fillRect(0, titleHeaderH, width, accentH);
+
+  const barY = titleHeaderH + accentH;
+  ctx.fillStyle = '#0f0f0f'; ctx.fillRect(0, barY, width, colBarH);
+
+  ctx.fillStyle = '#ffffff'; ctx.font = 'bold 13px Arial'; ctx.textAlign = 'center';
+  ctx.fillText('STAT', labelColW/2, barY + colBarH/2);
+
+  columns.forEach((col, i)=>{
+    const cx = labelColW + dataColW*i + dataColW/2;
+    let textTopY = barY + colBarH/2;
+
+    if(col.img){
+      const r = 15;
+      const photoCY = barY + 17;
+      ctx.save();
+      ctx.beginPath(); ctx.arc(cx, photoCY, r, 0, Math.PI*2); ctx.closePath(); ctx.clip();
+      ctx.drawImage(col.img, cx-r, photoCY-r, r*2, r*2);
+      ctx.restore();
+      ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.arc(cx, photoCY, r, 0, Math.PI*2); ctx.stroke();
+      textTopY = barY + 49;
+    }
+
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 13px Arial';
+    ctx.textAlign = 'center';
+    if(col.name){
+      ctx.fillText(truncate(col.name, 16), cx, textTopY - (col.team ? 7 : 0));
+      if(col.team){
+        ctx.font = '10px Arial'; ctx.fillStyle = '#b7c4d4';
+        ctx.fillText(truncate(col.team, 20), cx, textTopY + 8);
+      }
+    } else if(col.team){
+      ctx.fillText(truncate(col.team, 16), cx, textTopY);
+    } else if(!col.img){
+      ctx.font = 'bold 13px Arial';
+      ctx.fillText('VALUE ' + (i+1), cx, textTopY);
+    }
+  });
+
+  let y = barY + colBarH;
+  rows.forEach((row) => {
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, y, width, rowH);
+
+    ctx.fillStyle = '#111111';
+    ctx.font = 'bold 13px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText(row[0], labelColW/2, y+rowH/2);
+
+    for(let c=0; c<numDataCols; c++){
+      const value = row[c+1];
+      const cx0 = labelColW + dataColW*c + dataColW/2;
+      ctx.fillStyle = '#111111';
+      ctx.font = 'bold 13px Arial';
+      ctx.textAlign = 'center';
+      ctx.fillText(value !== undefined ? String(value) : '—', cx0, y+rowH/2);
+    }
+
+    ctx.strokeStyle = '#0f0f0f'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(0,y+rowH); ctx.lineTo(width,y+rowH); ctx.stroke();
+    y += rowH;
+  });
+
+  ctx.restore(); // end clip to rounded card shape
+
+  roundRectPath(borderW/2, borderW/2, width-borderW, height-borderW, cardRadius-borderW/2);
+  ctx.strokeStyle = '#0f0f0f'; ctx.lineWidth = borderW;
+  ctx.stroke();
+
+  const link = document.createElement('a');
+  link.download = title.toLowerCase().replace(/[^a-z0-9]+/g,'-') + '.png';
+  link.href = canvas.toDataURL('image/png');
+  link.click();
+}
+
+function truncate(str, n){
+  return str.length > n ? str.slice(0, n-1) + '…' : str;
+}
+</script>
+
+</body>
+</html>

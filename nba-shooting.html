@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>NBA Shooting Efficiency Calculator</title>
+<style>
+  *{box-sizing:border-box;}
+  html, body{ max-width:100%; overflow-x:hidden; }
+  body{ font-family:'Segoe UI', Arial, sans-serif; background:#e8e8e8; margin:0; padding:24px; color:#222; }
+  @media (max-width:600px){ body{ padding:12px; } }
+  .page-nav{ margin:0 0 16px 0; }
+  .page-nav a{ display:inline-block; font-size:13px; font-weight:600; color:#0b5cab; text-decoration:none; background:#eaf2fb; padding:8px 14px; border-radius:8px; }
+  .page-nav a:hover{ background:#dbe9fa; }
+  h2.pagetitle{ margin:0 0 4px 0; font-size:22px; }
+  .calc-card{ background:#fff; border-radius:12px; padding:22px; max-width:600px; box-shadow:0 2px 8px rgba(0,0,0,0.12); }
+  .calc-card h3{ margin:0 0 4px 0; font-size:18px; }
+  .formula{ font-family:'Cambria','Georgia',serif; font-style:italic; background:#f5f5f5; padding:10px 14px; border-radius:8px; font-size:14px; margin:10px 0 18px 0; color:#444; line-height:1.5; }
+  .field-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(110px,1fr)); gap:10px 14px; }
+  .field-grid div{ display:flex; flex-direction:column; }
+  .field-grid label{ font-size:12px; font-weight:600; color:#444; margin-bottom:3px; }
+  .field-grid input{ padding:8px; border:1px solid #ccc; border-radius:6px; font-size:14px; width:100%; }
+  .section-label{ font-size:13px; font-weight:700; display:block; margin:16px 0 8px; }
+  .calc-card button{ margin-top:16px; background:#222; color:#fff; border:none; border-radius:6px; padding:11px 20px; font-size:14px; font-weight:600; cursor:pointer; }
+  .calc-card button:hover{ background:#000; }
+  .calc-card button.secondary{ background:#888; }
+  .toggle-btn{ background:none; border:none; color:#0b5cab; font-size:13px; font-weight:600; cursor:pointer; padding:0; text-decoration:underline; }
+  .result-box{ margin-top:18px; padding:14px 16px; border-radius:8px; background:#f0f7f0; border:1px solid #cfe8cf; display:none; }
+  .result-box.show{ display:block; }
+  .result-box .headline{ font-size:22px; font-weight:800; color:#1a5c1a; }
+  .result-box .breakdown{ font-size:13px; color:#555; margin-top:8px; line-height:1.7; }
+  .hint{ font-size:12px; color:#888; margin-top:4px; line-height:1.4; }
+
+  .headshot-row{ display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+  .player-name-input{
+    border:none; border-bottom:2px solid #ccc; background:none; font-size:16px; font-weight:700;
+    padding:4px 2px; outline:none; color:#111;
+  }
+  .player-name-input:focus{ border-bottom-color:#0b1e33; }
+  .team-select{
+    border:none; border-bottom:2px solid #ccc; background:none; font-size:14px; font-weight:600;
+    padding:5px 2px; outline:none; color:#111; max-width:170px;
+  }
+  .team-select:focus{ border-bottom-color:#0b1e33; }
+  .headshot-thumb{ cursor:pointer; display:inline-block; vertical-align:middle; }
+  .headshot-thumb.empty .headshot-placeholder{
+    font-size:13px; font-weight:600; color:#0b5cab; text-decoration:underline;
+  }
+  .headshot-thumb.has-photo{
+    width:64px; height:64px; border-radius:50%; overflow:hidden; border:3px solid #0b1e33;
+  }
+  .headshot-thumb.has-photo img{ width:100%; height:100%; object-fit:cover; }
+
+  .extra-col-block{ margin-top:18px; padding-top:18px; border-top:2px dashed #ccc; }
+  .extra-col-block .col-label{ font-size:12px; font-weight:800; color:#888; text-transform:uppercase; letter-spacing:.04em; margin-bottom:10px; }
+</style>
+</head>
+<body>
+
+<div class="page-nav"><a href="index.html">← Home</a></div>
+<h2 class="pagetitle">NBA Shooting Efficiency Calculator</h2>
+
+<div style="margin-bottom:16px;">
+  <label style="font-size:13px; font-weight:700; margin-right:8px;">Card Theme:</label>
+  <select id="teamTheme" onchange="applyTeamTheme()" style="padding:7px 10px; border:1px solid #ccc; border-radius:6px; font-size:14px;"></select>
+  <div class="hint" style="margin-top:6px;">Colors the exported graphic's header and accent strip — same colors Stat Card Builder uses for that team. This is separate from each column's own Team field below.</div>
+</div>
+
+<div class="headshot-row">
+  <div class="headshot-thumb empty" id="headshotThumb" onclick="document.getElementById('headshotInput').click()">
+    <span class="headshot-placeholder">+ Add Photo</span>
+  </div>
+  <input type="file" id="headshotInput" accept="image/*" style="display:none;">
+  <input type="text" id="playerName" placeholder="Player name (optional)" class="player-name-input">
+  <select id="teamName" class="team-select">
+    <option value="">Team (optional)</option>
+  </select>
+</div>
+
+<div class="calc-card">
+  <h3>eFG% and TS%</h3>
+  <div class="formula">
+    eFG% = (FGM + 0.5×3PM) / FGA<br>
+    TS% = PTS / (2×(FGA + 0.44×FTA))
+  </div>
+
+  <label class="section-label">Box score stats</label>
+  <div class="field-grid">
+    <div><label>PTS</label><input type="number" id="PTS"></div>
+    <div><label>FGM</label><input type="number" id="FGM"></div>
+    <div><label>FGA</label><input type="number" id="FGA"></div>
+    <div><label>3PM</label><input type="number" id="TPM"></div>
+    <div><label>FTA</label><input type="number" id="FTA"></div>
+  </div>
+  <div class="hint">3PM = three-pointers made. FTA = free throw attempts.</div>
+
+  <div id="extraColumnsContainer"></div>
+
+  <button type="button" class="toggle-btn" onclick="addExtraColumn()" id="addColBtn" style="display:block; margin-top:18px;">+ Add Another Column ▾</button>
+  <div class="hint" id="colCountHint">1 of 6 columns used.</div>
+
+  <button onclick="calc()">Calculate</button>
+
+  <div class="result-box" id="result">
+    <div class="headline" id="headline"></div>
+    <div class="breakdown" id="breakdown"></div>
+    <button onclick="downloadGraphic()" style="margin-top:14px;">Download Graphic</button>
+    <button onclick="downloadJSON()" class="secondary" style="margin-top:8px;">Download JSON (for Stat Card Builder)</button>
+  </div>
+</div>
+
+<script>
+const NBA_TEAMS = ["Atlanta Hawks","Boston Celtics","Brooklyn Nets","Charlotte Hornets","Chicago Bulls","Cleveland Cavaliers","Dallas Mavericks","Denver Nuggets","Detroit Pistons","Golden State Warriors","Houston Rockets","Indiana Pacers","LA Clippers","Los Angeles Lakers","Memphis Grizzlies","Miami Heat","Milwaukee Bucks","Minnesota Timberwolves","New Orleans Pelicans","New York Knicks","Oklahoma City Thunder","Orlando Magic","Philadelphia 76ers","Phoenix Suns","Portland Trail Blazers","Sacramento Kings","San Antonio Spurs","Toronto Raptors","Utah Jazz","Washington Wizards"];
+
+// Same color data as statcard.html's LEAGUE_TEAMS, so a theme picked here
+// matches exactly if the JSON is loaded into the Stat Card Builder.
+const TEAM_THEME_COLORS = {
+    "Atlanta Hawks": {primary:"#E03A3E", accent:"#26282A", light:"#C1D32F"},
+    "Boston Celtics": {primary:"#007A33", accent:"#000000", light:"#BA9653"},
+    "Brooklyn Nets": {primary:"#000000", accent:"#707271", light:"#707271"},
+    "Charlotte Hornets": {primary:"#1D1160", accent:"#00788C", light:"#A1A1A4"},
+    "Chicago Bulls": {primary:"#CE1141", accent:"#000000", light:"#CE1141"},
+    "Cleveland Cavaliers": {primary:"#6F263D", accent:"#041E42", light:"#FFB81C"},
+    "Dallas Mavericks": {primary:"#00538C", accent:"#002B5E", light:"#B8C4CA"},
+    "Denver Nuggets": {primary:"#0E2240", accent:"#8B2131", light:"#FEC524"},
+    "Detroit Pistons": {primary:"#C8102E", accent:"#1D42BA", light:"#BEC0C2"},
+    "Golden State Warriors": {primary:"#1D428A", accent:"#000000", light:"#FFC72C"},
+    "Houston Rockets": {primary:"#CE1141", accent:"#000000", light:"#C4CED4"},
+    "Indiana Pacers": {primary:"#002D62", accent:"#000000", light:"#FDBB30"},
+    "LA Clippers": {primary:"#C8102E", accent:"#1D428A", light:"#BEC0C2"},
+    "Los Angeles Lakers": {primary:"#552583", accent:"#000000", light:"#FDB927"},
+    "Memphis Grizzlies": {primary:"#12173F", accent:"#5D76A9", light:"#F5B112"},
+    "Miami Heat": {primary:"#98002E", accent:"#000000", light:"#F9A01B"},
+    "Milwaukee Bucks": {primary:"#00471B", accent:"#000000", light:"#EEE1C6"},
+    "Minnesota Timberwolves": {primary:"#0C2340", accent:"#236192", light:"#78BE20"},
+    "New Orleans Pelicans": {primary:"#0C2340", accent:"#C8102E", light:"#85714D"},
+    "New York Knicks": {primary:"#006BB6", accent:"#000000", light:"#F58426"},
+    "Oklahoma City Thunder": {primary:"#007AC1", accent:"#002D62", light:"#EF3B24"},
+    "Orlando Magic": {primary:"#0077C0", accent:"#000000", light:"#C4CED4"},
+    "Philadelphia 76ers": {primary:"#006BB6", accent:"#002B5C", light:"#ED174C"},
+    "Phoenix Suns": {primary:"#1D1160", accent:"#000000", light:"#E56020"},
+    "Portland Trail Blazers": {primary:"#E03A3E", accent:"#000000", light:"#E03A3E"},
+    "Sacramento Kings": {primary:"#5A2D81", accent:"#000000", light:"#63727A"},
+    "San Antonio Spurs": {primary:"#000000", accent:"#C4CED4", light:"#C4CED4"},
+    "Toronto Raptors": {primary:"#CE1141", accent:"#000000", light:"#A1A1A4"},
+    "Utah Jazz": {primary:"#002B5C", accent:"#000000", light:"#F9A01B"},
+    "Washington Wizards": {primary:"#002B5C", accent:"#000000", light:"#E31837"}
+};
+// "Default" theme: not a team, so it round-trips as team:'' into Stat Card Builder.
+// FanGraphs green / Baseball Savant teal / Baseball-Reference red (from each site's
+// own brand color, verified via their pages' theme-color meta tags where available).
+const DEFAULT_THEME = {primary:"#50AE26", accent:"#146680", light:"#86081A"};
+
+function refreshTeamThemeDropdown(){
+  const sel = document.getElementById('teamTheme');
+  const prevValue = sel.value;
+  sel.innerHTML = '<option value="__default__">Default</option>' +
+    '<optgroup label="Team Colors">' +
+    Object.keys(TEAM_THEME_COLORS).map(t=>`<option value="${t}">${t}</option>`).join('') +
+    '</optgroup>';
+  sel.value = TEAM_THEME_COLORS[prevValue] ? prevValue : '__default__';
+  applyTeamTheme();
+}
+function applyTeamTheme(){
+  const sel = document.getElementById('teamTheme');
+  window._cardTheme = (sel.value !== '__default__' && TEAM_THEME_COLORS[sel.value]) ? TEAM_THEME_COLORS[sel.value] : DEFAULT_THEME;
+}
+
+const MAX_COLUMNS = 6;
+let extraColumnIndices = [];
+let colCounter = 0;
+
+function teamOptionsHTML(){
+  return '<option value="">Team (optional)</option>' + NBA_TEAMS.map(t=>`<option value="${t}">${t}</option>`).join('');
+}
+document.getElementById('teamName').innerHTML = teamOptionsHTML();
+refreshTeamThemeDropdown();
+
+function val(id){ const el = document.getElementById(id); return el ? (parseFloat(el.value) || 0) : 0; }
+
+function updateColCountHint(){
+  const total = 1 + extraColumnIndices.length;
+  document.getElementById('colCountHint').textContent = total + ' of ' + MAX_COLUMNS + ' columns used.';
+  document.getElementById('addColBtn').style.display = total >= MAX_COLUMNS ? 'none' : 'block';
+}
+
+function addExtraColumn(){
+  if(1 + extraColumnIndices.length >= MAX_COLUMNS) return;
+  colCounter++;
+  const idx = colCounter;
+  extraColumnIndices.push(idx);
+
+  const block = document.createElement('div');
+  block.className = 'extra-col-block';
+  block.id = 'colBlock_' + idx;
+  block.innerHTML = `
+    <div class="col-label">Column ${1+extraColumnIndices.length}</div>
+    <div class="headshot-row" style="margin-bottom:16px;">
+      <div class="headshot-thumb empty" id="headshotThumb_${idx}" onclick="document.getElementById('headshotInput_${idx}').click()">
+        <span class="headshot-placeholder">+ Add Photo</span>
+      </div>
+      <input type="file" id="headshotInput_${idx}" accept="image/*" style="display:none;">
+      <input type="text" id="playerName_${idx}" placeholder="Player name (optional)" class="player-name-input">
+      <select id="teamName_${idx}" class="team-select">${teamOptionsHTML()}</select>
+    </div>
+    <label class="section-label">Box score stats</label>
+    <div class="field-grid">
+      <div><label>PTS</label><input type="number" id="PTS_${idx}"></div>
+      <div><label>FGM</label><input type="number" id="FGM_${idx}"></div>
+      <div><label>FGA</label><input type="number" id="FGA_${idx}"></div>
+      <div><label>3PM</label><input type="number" id="TPM_${idx}"></div>
+      <div><label>FTA</label><input type="number" id="FTA_${idx}"></div>
+    </div>
+    <button type="button" class="secondary" onclick="removeExtraColumn(${idx})">Remove This Column</button>
+  `;
+  document.getElementById('extraColumnsContainer').appendChild(block);
+  setupHeadshotUpload('headshotInput_'+idx, 'headshotThumb_'+idx, '_headshotDataUrl_'+idx);
+  updateColCountHint();
+}
+
+function removeExtraColumn(idx){
+  const block = document.getElementById('colBlock_' + idx);
+  if(block) block.remove();
+  extraColumnIndices = extraColumnIndices.filter(i => i !== idx);
+  delete window['_headshotDataUrl_' + idx];
+  extraColumnIndices.forEach((i, pos) => {
+    const b = document.getElementById('colBlock_' + i);
+    if(b) b.querySelector('.col-label').textContent = 'Column ' + (2 + pos);
+  });
+  updateColCountHint();
+}
+
+function computeShooting(suffix){
+  const PTS = val('PTS'+suffix), FGM = val('FGM'+suffix), FGA = val('FGA'+suffix),
+        TPM = val('TPM'+suffix), FTA = val('FTA'+suffix);
+  if(FGA <= 0) return null;
+  const efg = (FGM + 0.5*TPM) / FGA;
+  const tsDenom = 2*(FGA + 0.44*FTA);
+  const ts = tsDenom > 0 ? PTS / tsDenom : 0;
+  return { PTS, FGM, FGA, TPM, FTA, efg, ts, tsDenom };
+}
+
+function calc(){
+  const base = computeShooting('');
+  if(!base){ alert('Enter FGA and the rest of the box score line.'); return; }
+
+  document.getElementById('headline').textContent = 'eFG%: ' + (base.efg*100).toFixed(1) + '%   |   TS%: ' + (base.ts*100).toFixed(1) + '%';
+  document.getElementById('breakdown').innerHTML =
+    `eFG% = (${base.FGM} + 0.5×${base.TPM}) / ${base.FGA} = ${base.efg.toFixed(4)}<br>` +
+    `TS% = ${base.PTS} / (2×(${base.FGA} + 0.44×${base.FTA})) = ${base.PTS} / ${base.tsDenom.toFixed(2)} = ${base.ts.toFixed(4)}`;
+  document.getElementById('result').classList.add('show');
+
+  const allResults = [base];
+  extraColumnIndices.forEach(idx=>{ allResults.push(computeShooting('_'+idx)); });
+
+  const statFields = [
+    ['PTS', d=>d.PTS], ['FGM', d=>d.FGM], ['FGA', d=>d.FGA], ['3PM', d=>d.TPM], ['FTA', d=>d.FTA]
+  ];
+  window._graphicRows = statFields.map(([label, getter])=>{
+    const row = [label];
+    allResults.forEach(d=> row.push(d ? getter(d) : undefined));
+    return row;
+  });
+  const efgRow = ['eFG%']; allResults.forEach(d=> efgRow.push(d ? (d.efg*100).toFixed(1)+'%' : undefined)); efgRow.push(true);
+  const tsRow = ['TS%']; allResults.forEach(d=> tsRow.push(d ? (d.ts*100).toFixed(1)+'%' : undefined)); tsRow.push(true);
+  window._graphicRows.push(efgRow);
+  window._graphicRows.push(tsRow);
+}
+
+function downloadGraphic(){
+  if(!window._graphicRows) return;
+  downloadStatGraphic('NBA Shooting Efficiency', window._graphicRows);
+}
+
+function gatherColumns(){
+  const columns = [{
+    photoUrl: window._headshotDataUrl,
+    name: (document.getElementById('playerName').value || '').trim(),
+    team: document.getElementById('teamName').value || ''
+  }];
+  extraColumnIndices.forEach(idx=>{
+    columns.push({
+      photoUrl: window['_headshotDataUrl_'+idx],
+      name: (document.getElementById('playerName_'+idx).value || '').trim(),
+      team: document.getElementById('teamName_'+idx).value || ''
+    });
+  });
+  return columns;
+}
+
+function downloadJSON(){
+  if(!window._graphicRows) return;
+  const columns = gatherColumns();
+
+  const state = {
+    version: 1,
+    title: 'NBA Shooting Efficiency',
+    team: (document.getElementById('teamTheme').value === '__default__' ? '' : document.getElementById('teamTheme').value),
+    cardStyle: 'table',
+    mainPhoto: null,
+    columns: columns.map(c => ({
+      label: c.name || c.team || 'Column',
+      color: '#111111',
+      photo: c.photoUrl || null
+    })),
+    rows: window._graphicRows.map(row=>{
+      const label = row[0];
+      const isResult = row[row.length-1] === true;
+      const valueCount = isResult ? row.length-2 : row.length-1;
+      const values = [];
+      for(let i=0; i<valueCount; i++){
+        values.push({ value: row[i+1] !== undefined ? String(row[i+1]) : '0', rawstat: '' });
+      }
+      return { label, isPctl: false, values };
+    })
+  };
+
+  const blob = new Blob([JSON.stringify(state, null, 2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = 'nba-shooting-efficiency.json';
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
+function setupHeadshotUpload(inputId, thumbId, storeKey){
+  document.getElementById(inputId).addEventListener('change', (e)=>{
+    const file = e.target.files && e.target.files[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev)=>{
+      const img = new Image();
+      img.onload = ()=>{
+        const size = Math.min(img.width, img.height);
+        const sx = (img.width-size)/2, sy = (img.height-size)/2;
+        const canvas = document.createElement('canvas');
+        canvas.width = 300; canvas.height = 300;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, sx, sy, size, size, 0, 0, 300, 300);
+        window[storeKey] = canvas.toDataURL('image/png');
+        const thumb = document.getElementById(thumbId);
+        thumb.classList.remove('empty'); thumb.classList.add('has-photo');
+        thumb.innerHTML = '';
+        const previewImg = document.createElement('img');
+        previewImg.src = window[storeKey];
+        thumb.appendChild(previewImg);
+      };
+      img.src = ev.target.result;
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  });
+}
+setupHeadshotUpload('headshotInput', 'headshotThumb', '_headshotDataUrl');
+
+// ---- Shared stat-graphic renderer (same on every calculator page) ----
+function downloadStatGraphic(title, rows){
+  const columns = gatherColumns();
+  loadColumnImages(columns, (loadedColumns)=>{ renderGraphicCanvas(title, rows, loadedColumns); });
+}
+
+function loadColumnImages(columns, callback){
+  let pending = 0;
+  columns.forEach(col=>{
+    if(col.photoUrl){
+      pending++;
+      const img = new Image();
+      img.onload = ()=>{ col.img = img; pending--; if(pending===0) callback(columns); };
+      img.src = col.photoUrl;
+    }
+  });
+  if(pending === 0) callback(columns);
+}
+
+function renderGraphicCanvas(title, rows, columns){
+  const scale = 2;
+  const numDataCols = columns.length;
+  const labelColW = 150;
+  const dataColW = 150;
+  const width = labelColW + dataColW*numDataCols;
+  const rowH = 40, accentH = 6;
+  const anyName = columns.some(c=>c.name);
+  const titleHeaderH = anyName ? 50 : 44;
+  const colBarH = 70;
+  const height = titleHeaderH + accentH + colBarH + rows.length*rowH + 16;
+
+  const canvas = document.createElement('canvas');
+  canvas.width = width*scale; canvas.height = height*scale;
+  const ctx = canvas.getContext('2d');
+  ctx.scale(scale, scale);
+
+  const cardRadius = 20, borderW = 4;
+  function roundRectPath(x, y, w, h, r){
+    ctx.beginPath();
+    ctx.moveTo(x+r, y);
+    ctx.arcTo(x+w, y,   x+w, y+h, r);
+    ctx.arcTo(x+w, y+h, x,   y+h, r);
+    ctx.arcTo(x,   y+h, x,   y,   r);
+    ctx.arcTo(x,   y,   x+w, y,   r);
+    ctx.closePath();
+  }
+
+  ctx.fillStyle = '#ffffff'; ctx.fillRect(0,0,width,height);
+
+  roundRectPath(0, 0, width, height, cardRadius);
+  ctx.save();
+  ctx.clip();
+
+  const theme = window._cardTheme || DEFAULT_THEME;
+  ctx.fillStyle = theme.primary; ctx.fillRect(0,0,width,titleHeaderH);
+  ctx.fillStyle = '#ffffff'; ctx.font = 'bold 18px Arial'; ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
+  ctx.fillText(title, 16, titleHeaderH/2);
+
+  ctx.fillStyle = theme.accent; ctx.fillRect(0, titleHeaderH, width, accentH);
+
+  const barY = titleHeaderH + accentH;
+  ctx.fillStyle = '#0f0f0f'; ctx.fillRect(0, barY, width, colBarH);
+
+  ctx.fillStyle = '#ffffff'; ctx.font = 'bold 13px Arial'; ctx.textAlign = 'center';
+  ctx.fillText('STAT', labelColW/2, barY + colBarH/2);
+
+  columns.forEach((col, i)=>{
+    const cx = labelColW + dataColW*i + dataColW/2;
+    let textTopY = barY + colBarH/2;
+
+    if(col.img){
+      const r = 15;
+      const photoCY = barY + 17;
+      ctx.save();
+      ctx.beginPath(); ctx.arc(cx, photoCY, r, 0, Math.PI*2); ctx.closePath(); ctx.clip();
+      ctx.drawImage(col.img, cx-r, photoCY-r, r*2, r*2);
+      ctx.restore();
+      ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.arc(cx, photoCY, r, 0, Math.PI*2); ctx.stroke();
+      textTopY = barY + 49;
+    }
+
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 13px Arial';
+    ctx.textAlign = 'center';
+    if(col.name){
+      ctx.fillText(truncate(col.name, 16), cx, textTopY - (col.team ? 7 : 0));
+      if(col.team){
+        ctx.font = '10px Arial'; ctx.fillStyle = '#b7c4d4';
+        ctx.fillText(truncate(col.team, 20), cx, textTopY + 8);
+      }
+    } else if(col.team){
+      ctx.fillText(truncate(col.team, 16), cx, textTopY);
+    } else if(!col.img){
+      ctx.font = 'bold 13px Arial';
+      ctx.fillText('VALUE ' + (i+1), cx, textTopY);
+    }
+  });
+
+  let y = barY + colBarH;
+  rows.forEach((row) => {
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, y, width, rowH);
+
+    ctx.fillStyle = '#111111';
+    ctx.font = 'bold 13px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText(row[0], labelColW/2, y+rowH/2);
+
+    for(let c=0; c<numDataCols; c++){
+      const value = row[c+1];
+      const cx0 = labelColW + dataColW*c + dataColW/2;
+      ctx.fillStyle = '#111111';
+      ctx.font = 'bold 13px Arial';
+      ctx.textAlign = 'center';
+      ctx.fillText(value !== undefined ? String(value) : '—', cx0, y+rowH/2);
+    }
+
+    ctx.strokeStyle = '#0f0f0f'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(0,y+rowH); ctx.lineTo(width,y+rowH); ctx.stroke();
+    y += rowH;
+  });
+
+  ctx.restore(); // end clip to rounded card shape
+
+  roundRectPath(borderW/2, borderW/2, width-borderW, height-borderW, cardRadius-borderW/2);
+  ctx.strokeStyle = '#0f0f0f'; ctx.lineWidth = borderW;
+  ctx.stroke();
+
+  const link = document.createElement('a');
+  link.download = title.toLowerCase().replace(/[^a-z0-9]+/g,'-') + '.png';
+  link.href = canvas.toDataURL('image/png');
+  link.click();
+}
+
+function truncate(str, n){
+  return str.length > n ? str.slice(0, n-1) + '…' : str;
+}
+</script>
+
+</body>
+</html>

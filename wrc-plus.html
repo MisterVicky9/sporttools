@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>wRC+ Calculator</title>
+<style>
+  *{box-sizing:border-box;}
+  html, body{ max-width:100%; overflow-x:hidden; }
+  body{ font-family:'Segoe UI', Arial, sans-serif; background:#e8e8e8; margin:0; padding:24px; color:#222; }
+  @media (max-width:600px){ body{ padding:12px; } }
+  .page-nav{ margin:0 0 16px 0; }
+  .page-nav a{ display:inline-block; font-size:13px; font-weight:600; color:#0b5cab; text-decoration:none; background:#eaf2fb; padding:8px 14px; border-radius:8px; }
+  .page-nav a:hover{ background:#dbe9fa; }
+  h2.pagetitle{ margin:0 0 4px 0; font-size:22px; }
+  .calc-card{ background:#fff; border-radius:12px; padding:22px; max-width:600px; box-shadow:0 2px 8px rgba(0,0,0,0.12); }
+  .calc-card h3{ margin:0 0 4px 0; font-size:18px; }
+  .formula{ font-family:'Cambria','Georgia',serif; font-style:italic; background:#f5f5f5; padding:10px 14px; border-radius:8px; font-size:14px; margin:10px 0 18px 0; color:#444; line-height:1.5; }
+  .field-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(110px,1fr)); gap:10px 14px; }
+  .field-grid div{ display:flex; flex-direction:column; }
+  .field-grid label{ font-size:12px; font-weight:600; color:#444; margin-bottom:3px; }
+  .field-grid input{ padding:8px; border:1px solid #ccc; border-radius:6px; font-size:14px; width:100%; }
+  .section-label{ font-size:13px; font-weight:700; display:block; margin:16px 0 8px; }
+  .calc-card button{ margin-top:16px; background:#222; color:#fff; border:none; border-radius:6px; padding:11px 20px; font-size:14px; font-weight:600; cursor:pointer; }
+  .calc-card button:hover{ background:#000; }
+  .calc-card button.secondary{ background:#888; }
+  .result-box{ margin-top:18px; padding:14px 16px; border-radius:8px; background:#f0f7f0; border:1px solid #cfe8cf; display:none; }
+  .result-box.show{ display:block; }
+  .result-box .headline{ font-size:26px; font-weight:800; color:#1a5c1a; }
+  .result-box .breakdown{ font-size:13px; color:#555; margin-top:8px; line-height:1.7; }
+  .hint{ font-size:12px; color:#888; margin-top:4px; line-height:1.4; }
+  .toggle-btn{ background:none; border:none; color:#0b5cab; font-size:13px; font-weight:600; cursor:pointer; padding:0; text-decoration:underline; }
+
+  .headshot-row{ display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+  .player-name-input{
+    border:none; border-bottom:2px solid #ccc; background:none; font-size:16px; font-weight:700;
+    padding:4px 2px; outline:none; color:#111;
+  }
+  .player-name-input:focus{ border-bottom-color:#0b1e33; }
+  .team-select{
+    border:none; border-bottom:2px solid #ccc; background:none; font-size:14px; font-weight:600;
+    padding:5px 2px; outline:none; color:#111; max-width:170px;
+  }
+  .team-select:focus{ border-bottom-color:#0b1e33; }
+  .headshot-thumb{ cursor:pointer; display:inline-block; vertical-align:middle; }
+  .headshot-thumb.empty .headshot-placeholder{
+    font-size:13px; font-weight:600; color:#0b5cab; text-decoration:underline;
+  }
+  .headshot-thumb.has-photo{
+    width:64px; height:64px; border-radius:50%; overflow:hidden; border:3px solid #0b1e33;
+  }
+  .headshot-thumb.has-photo img{ width:100%; height:100%; object-fit:cover; }
+
+  .extra-col-block{ margin-top:18px; padding-top:18px; border-top:2px dashed #ccc; }
+  .extra-col-block .col-label{ font-size:12px; font-weight:800; color:#888; text-transform:uppercase; letter-spacing:.04em; margin-bottom:10px; }
+</style>
+</head>
+<body>
+
+<div class="page-nav"><a href="index.html">← Home</a></div>
+<h2 class="pagetitle">wRC+ Calculator</h2>
+
+<div style="margin-bottom:16px;">
+  <label style="font-size:13px; font-weight:700; margin-right:8px;">Card Theme:</label>
+  <select id="teamTheme" onchange="applyTeamTheme()" style="padding:7px 10px; border:1px solid #ccc; border-radius:6px; font-size:14px;"></select>
+  <div class="hint" style="margin-top:6px;">Colors the exported graphic's header and accent strip — same colors Stat Card Builder uses for that team. This is separate from each column's own Team field below.</div>
+</div>
+
+<div class="headshot-row">
+  <div class="headshot-thumb empty" id="headshotThumb" onclick="document.getElementById('headshotInput').click()">
+    <span class="headshot-placeholder">+ Add Photo</span>
+  </div>
+  <input type="file" id="headshotInput" accept="image/*" style="display:none;">
+  <input type="text" id="playerName" placeholder="Player name (optional)" class="player-name-input">
+  <select id="teamName" class="team-select">
+    <option value="">Team (optional)</option>
+  </select>
+</div>
+
+<div class="calc-card">
+  <h3>wRC+</h3>
+  <div class="formula">
+    wRAA = ((wOBA − League wOBA) / wOBA Scale) × PA<br>
+    wRC+ = 100 × [(wRAA/PA + League R/PA) + (League R/PA − ParkFactor×League R/PA)] / League R/PA
+  </div>
+
+  <label class="section-label">Your player</label>
+  <div class="field-grid">
+    <div><label>wOBA</label><input type="number" id="wOBA" step="0.001"></div>
+    <div><label>PA</label><input type="number" id="PA"></div>
+  </div>
+  <div class="hint">Get wOBA from the <a href="woba.html">wOBA Calculator</a> if you don't have one yet.</div>
+
+  <label class="section-label">League constants for the season you're matching</label>
+  <div class="field-grid">
+    <div><label>League wOBA</label><input type="number" id="lgwOBA" step="0.001"></div>
+    <div><label>wOBA Scale</label><input type="number" id="scale" step="0.001"></div>
+    <div><label>League R/PA</label><input type="number" id="lgRPA" step="0.001"></div>
+    <div><label>Park Factor</label><input type="number" id="PF" placeholder="100 = neutral"></div>
+  </div>
+
+  <div id="extraColumnsContainer"></div>
+
+  <button type="button" class="toggle-btn" onclick="addExtraColumn()" id="addColBtn" style="display:block; margin-top:18px;">+ Add Another Column ▾</button>
+  <div class="hint" id="colCountHint">1 of 6 columns used.</div>
+
+  <button onclick="calc()">Calculate</button>
+
+  <div class="result-box" id="result">
+    <div class="headline" id="headline"></div>
+    <div class="breakdown" id="breakdown"></div>
+    <button onclick="downloadGraphic()" style="margin-top:14px;">Download Graphic</button>
+    <button onclick="downloadJSON()" class="secondary" style="margin-top:8px;">Download JSON (for Stat Card Builder)</button>
+  </div>
+</div>
+
+<script>
+const MLB_TEAMS = ["Arizona Diamondbacks","Atlanta Braves","Baltimore Orioles","Boston Red Sox",
+"Chicago Cubs","Chicago White Sox","Cincinnati Reds","Cleveland Guardians","Colorado Rockies",
+"Detroit Tigers","Houston Astros","Kansas City Royals","Los Angeles Angels","Los Angeles Dodgers",
+"Miami Marlins","Milwaukee Brewers","Minnesota Twins","New York Mets","New York Yankees",
+"Oakland Athletics","Philadelphia Phillies","Pittsburgh Pirates","San Diego Padres","San Francisco Giants",
+"Seattle Mariners","St. Louis Cardinals","Tampa Bay Rays","Texas Rangers","Toronto Blue Jays","Washington Nationals"];
+
+// Same color data as statcard.html's LEAGUE_TEAMS, so a theme picked here
+// matches exactly if the JSON is loaded into the Stat Card Builder.
+const TEAM_THEME_COLORS = {
+    "Arizona Diamondbacks": {primary:"#A71930", accent:"#33CCCC", light:"#DBCEAC"},
+    "Atlanta Braves": {primary:"#CE1141", accent:"#13274F", light:"#EAAA00"},
+    "Baltimore Orioles": {primary:"#DF4601", accent:"#000000", light:"#FFD9B3"},
+    "Boston Red Sox": {primary:"#BD3039", accent:"#0C2340", light:"#E3D4AD"},
+    "Chicago Cubs": {primary:"#0E3386", accent:"#CC3433", light:"#C9D8ED"},
+    "Chicago White Sox": {primary:"#27251F", accent:"#C4CED4", light:"#C4CED4"},
+    "Cincinnati Reds": {primary:"#C6011F", accent:"#000000", light:"#E3D4AD"},
+    "Cleveland Guardians": {primary:"#00385D", accent:"#E31937", light:"#C9D8ED"},
+    "Colorado Rockies": {primary:"#33006F", accent:"#C4CED4", light:"#C4CED4"},
+    "Detroit Tigers": {primary:"#0C2340", accent:"#FA4616", light:"#C9D8ED"},
+    "Houston Astros": {primary:"#002D62", accent:"#EB6E1F", light:"#C9D8ED"},
+    "Kansas City Royals": {primary:"#004687", accent:"#BD9B60", light:"#E3D4AD"},
+    "Los Angeles Angels": {primary:"#BA0021", accent:"#003263", light:"#E3D4AD"},
+    "Los Angeles Dodgers": {primary:"#005A9C", accent:"#EF3E42", light:"#C9D8ED"},
+    "Miami Marlins": {primary:"#00A3E0", accent:"#EF3340", light:"#000000"},
+    "Milwaukee Brewers": {primary:"#12284B", accent:"#FFC52F", light:"#FFC52F"},
+    "Minnesota Twins": {primary:"#002B5C", accent:"#D31145", light:"#C9D8ED"},
+    "New York Mets": {primary:"#002D72", accent:"#FF5910", light:"#C9D8ED"},
+    "New York Yankees": {primary:"#003087", accent:"#0C2340", light:"#C9D8ED"},
+    "Oakland Athletics": {primary:"#003831", accent:"#EFB21E", light:"#EFB21E"},
+    "Philadelphia Phillies": {primary:"#E81828", accent:"#002D72", light:"#E3D4AD"},
+    "Pittsburgh Pirates": {primary:"#FDB827", accent:"#27251F", light:"#FDB827"},
+    "San Diego Padres": {primary:"#2F241D", accent:"#FFC425", light:"#A2AAAD"},
+    "San Francisco Giants": {primary:"#FD5A1E", accent:"#27251F", light:"#E3D4AD"},
+    "Seattle Mariners": {primary:"#0C2C56", accent:"#005C5C", light:"#C9D8ED"},
+    "St. Louis Cardinals": {primary:"#C41E3A", accent:"#0C2340", light:"#E3D4AD"},
+    "Tampa Bay Rays": {primary:"#092C5C", accent:"#8FBCE6", light:"#F5D130"},
+    "Texas Rangers": {primary:"#003278", accent:"#C0111F", light:"#C9D8ED"},
+    "Toronto Blue Jays": {primary:"#134A8E", accent:"#1D2D5C", light:"#E8291C"},
+    "Washington Nationals": {primary:"#AB0003", accent:"#14225A", light:"#E3D4AD"}
+};
+// "Default" theme: not a team, so it round-trips as team:'' into Stat Card Builder.
+// FanGraphs green / Baseball Savant teal / Baseball-Reference red (from each site's
+// own brand color, verified via their pages' theme-color meta tags where available).
+const DEFAULT_THEME = {primary:"#50AE26", accent:"#146680", light:"#86081A"};
+
+function refreshTeamThemeDropdown(){
+  const sel = document.getElementById('teamTheme');
+  const prevValue = sel.value;
+  sel.innerHTML = '<option value="__default__">Default</option>' +
+    '<optgroup label="Team Colors">' +
+    Object.keys(TEAM_THEME_COLORS).map(t=>`<option value="${t}">${t}</option>`).join('') +
+    '</optgroup>';
+  sel.value = TEAM_THEME_COLORS[prevValue] ? prevValue : '__default__';
+  applyTeamTheme();
+}
+function applyTeamTheme(){
+  const sel = document.getElementById('teamTheme');
+  window._cardTheme = (sel.value !== '__default__' && TEAM_THEME_COLORS[sel.value]) ? TEAM_THEME_COLORS[sel.value] : DEFAULT_THEME;
+}
+
+const MAX_COLUMNS = 6;
+let extraColumnIndices = [];
+
+function teamOptionsHTML(){
+  return '<option value="">Team (optional)</option>' + MLB_TEAMS.map(t=>`<option value="${t}">${t}</option>`).join('');
+}
+document.getElementById('teamName').innerHTML = teamOptionsHTML();
+refreshTeamThemeDropdown();
+
+function val(id){ const el = document.getElementById(id); return el ? (parseFloat(el.value) || 0) : 0; }
+
+function updateColCountHint(){
+  const total = 1 + extraColumnIndices.length;
+  document.getElementById('colCountHint').textContent = total + ' of ' + MAX_COLUMNS + ' columns used.';
+  document.getElementById('addColBtn').style.display = total >= MAX_COLUMNS ? 'none' : 'block';
+}
+
+let colCounter = 0;
+function addExtraColumn(){
+  if(1 + extraColumnIndices.length >= MAX_COLUMNS) return;
+  colCounter++;
+  const idx = colCounter;
+  extraColumnIndices.push(idx);
+
+  const block = document.createElement('div');
+  block.className = 'extra-col-block';
+  block.id = 'colBlock_' + idx;
+  block.innerHTML = `
+    <div class="col-label">Column ${1+extraColumnIndices.length}</div>
+    <div class="headshot-row" style="margin-bottom:16px;">
+      <div class="headshot-thumb empty" id="headshotThumb_${idx}" onclick="document.getElementById('headshotInput_${idx}').click()">
+        <span class="headshot-placeholder">+ Add Photo</span>
+      </div>
+      <input type="file" id="headshotInput_${idx}" accept="image/*" style="display:none;">
+      <input type="text" id="playerName_${idx}" placeholder="Player name (optional)" class="player-name-input">
+      <select id="teamName_${idx}" class="team-select">${teamOptionsHTML()}</select>
+    </div>
+    <label class="section-label">Player</label>
+    <div class="field-grid">
+      <div><label>wOBA</label><input type="number" id="wOBA_${idx}" step="0.001"></div>
+      <div><label>PA</label><input type="number" id="PA_${idx}"></div>
+    </div>
+    <label class="section-label">League constants</label>
+    <div class="field-grid">
+      <div><label>League wOBA</label><input type="number" id="lgwOBA_${idx}" step="0.001"></div>
+      <div><label>wOBA Scale</label><input type="number" id="scale_${idx}" step="0.001"></div>
+      <div><label>League R/PA</label><input type="number" id="lgRPA_${idx}" step="0.001"></div>
+      <div><label>Park Factor</label><input type="number" id="PF_${idx}" placeholder="100 = neutral"></div>
+    </div>
+    <button type="button" class="secondary" onclick="removeExtraColumn(${idx})">Remove This Column</button>
+  `;
+  document.getElementById('extraColumnsContainer').appendChild(block);
+  setupHeadshotUpload('headshotInput_'+idx, 'headshotThumb_'+idx, '_headshotDataUrl_'+idx);
+  updateColCountHint();
+}
+
+function removeExtraColumn(idx){
+  const block = document.getElementById('colBlock_' + idx);
+  if(block) block.remove();
+  extraColumnIndices = extraColumnIndices.filter(i => i !== idx);
+  delete window['_headshotDataUrl_' + idx];
+  extraColumnIndices.forEach((i, pos) => {
+    const b = document.getElementById('colBlock_' + i);
+    if(b) b.querySelector('.col-label').textContent = 'Column ' + (2 + pos);
+  });
+  updateColCountHint();
+}
+
+function computeWrcPlus(suffix){
+  const wOBA = val('wOBA'+suffix), PA = val('PA'+suffix), lgwOBA = val('lgwOBA'+suffix),
+        scale = val('scale'+suffix), lgRPA = val('lgRPA'+suffix);
+  const PFraw = document.getElementById('PF'+suffix).value;
+  const PF = PFraw ? parseFloat(PFraw) : 100;
+  if(PA <= 0 || scale === 0 || lgRPA === 0) return null;
+  const wRAA = ((wOBA - lgwOBA)/scale) * PA;
+  const bracket = (wRAA/PA + lgRPA) + (lgRPA - (PF/100)*lgRPA);
+  const wRCplus = 100 * bracket / lgRPA;
+  return { wOBA, PA, wRAA, wRCplus };
+}
+
+function calc(){
+  const base = computeWrcPlus('');
+  if(!base){ alert('Enter wOBA, PA, and the league constants (Scale and League R/PA can\'t be zero).'); return; }
+
+  document.getElementById('headline').textContent = 'wRC+: ' + base.wRCplus.toFixed(1);
+  document.getElementById('breakdown').innerHTML =
+    `wRAA = ((${base.wOBA} − ${val('lgwOBA')}) / ${val('scale')}) × ${base.PA} = ${base.wRAA.toFixed(2)}<br>` +
+    `wRC+ = 100 × [(${(base.wRAA/base.PA).toFixed(4)} + ${val('lgRPA')}) + (${val('lgRPA')} − ${((document.getElementById('PF').value?parseFloat(document.getElementById('PF').value):100)/100).toFixed(2)}×${val('lgRPA')})] / ${val('lgRPA')} = ${base.wRCplus.toFixed(1)}`;
+  document.getElementById('result').classList.add('show');
+
+  const allResults = [base];
+  extraColumnIndices.forEach(idx=>{ allResults.push(computeWrcPlus('_'+idx)); });
+
+  const wobaRow = ['wOBA']; allResults.forEach(d=> wobaRow.push(d ? d.wOBA : undefined));
+  const paRow = ['PA']; allResults.forEach(d=> paRow.push(d ? d.PA : undefined));
+  const wraaRow = ['wRAA']; allResults.forEach(d=> wraaRow.push(d ? d.wRAA.toFixed(2) : undefined));
+  const wrcRow = ['wRC+']; allResults.forEach(d=> wrcRow.push(d ? d.wRCplus.toFixed(1) : undefined)); wrcRow.push(true);
+
+  window._graphicRows = [wobaRow, paRow, wraaRow, wrcRow];
+}
+
+function downloadGraphic(){
+  if(!window._graphicRows) return;
+  downloadStatGraphic('wRC+ Calculator', window._graphicRows);
+}
+
+// Exports in the SAME schema statcard.html's "Load Progress" expects, so this file
+// can be dropped straight into the Stat Card Builder to keep building on it there.
+function downloadJSON(){
+  if(!window._graphicRows) return;
+
+  const columns = [{
+    name: (document.getElementById('playerName').value || '').trim(),
+    team: document.getElementById('teamName').value || '',
+    photoUrl: window._headshotDataUrl
+  }];
+  extraColumnIndices.forEach(idx=>{
+    columns.push({
+      name: (document.getElementById('playerName_'+idx).value || '').trim(),
+      team: document.getElementById('teamName_'+idx).value || '',
+      photoUrl: window['_headshotDataUrl_'+idx]
+    });
+  });
+
+  const state = {
+    version: 1,
+    title: 'wRC+ Comparison',
+    team: (document.getElementById('teamTheme').value === '__default__' ? '' : document.getElementById('teamTheme').value),
+    cardStyle: 'table',
+    mainPhoto: null,
+    columns: columns.map(c => ({
+      label: c.name || c.team || 'Column',
+      color: '#111111',
+      photo: c.photoUrl || null
+    })),
+    rows: window._graphicRows.map(row=>{
+      const label = row[0];
+      const isResult = row[row.length-1] === true;
+      const valueCount = isResult ? row.length-2 : row.length-1;
+      const values = [];
+      for(let i=0; i<valueCount; i++){
+        values.push({ value: row[i+1] !== undefined ? String(row[i+1]) : '0', rawstat: '' });
+      }
+      return { label, isPctl: false, values };
+    })
+  };
+
+  const blob = new Blob([JSON.stringify(state, null, 2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = 'wrc-plus-comparison.json';
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
+function setupHeadshotUpload(inputId, thumbId, storeKey){
+  document.getElementById(inputId).addEventListener('change', (e)=>{
+    const file = e.target.files && e.target.files[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev)=>{
+      const img = new Image();
+      img.onload = ()=>{
+        const size = Math.min(img.width, img.height);
+        const sx = (img.width-size)/2, sy = (img.height-size)/2;
+        const canvas = document.createElement('canvas');
+        canvas.width = 300; canvas.height = 300;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, sx, sy, size, size, 0, 0, 300, 300);
+        window[storeKey] = canvas.toDataURL('image/png');
+        const thumb = document.getElementById(thumbId);
+        thumb.classList.remove('empty'); thumb.classList.add('has-photo');
+        thumb.innerHTML = '';
+        const previewImg = document.createElement('img');
+        previewImg.src = window[storeKey];
+        thumb.appendChild(previewImg);
+      };
+      img.src = ev.target.result;
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  });
+}
+setupHeadshotUpload('headshotInput', 'headshotThumb', '_headshotDataUrl');
+
+// ---- Shared stat-graphic renderer (same on every calculator page) ----
+function downloadStatGraphic(title, rows){
+  const columns = [{
+    photoUrl: window._headshotDataUrl,
+    name: (document.getElementById('playerName').value || '').trim(),
+    team: document.getElementById('teamName').value || ''
+  }];
+  extraColumnIndices.forEach(idx=>{
+    columns.push({
+      photoUrl: window['_headshotDataUrl_'+idx],
+      name: (document.getElementById('playerName_'+idx).value || '').trim(),
+      team: document.getElementById('teamName_'+idx).value || ''
+    });
+  });
+  loadColumnImages(columns, (loadedColumns)=>{ renderGraphicCanvas(title, rows, loadedColumns); });
+}
+
+function loadColumnImages(columns, callback){
+  let pending = 0;
+  columns.forEach(col=>{
+    if(col.photoUrl){
+      pending++;
+      const img = new Image();
+      img.onload = ()=>{ col.img = img; pending--; if(pending===0) callback(columns); };
+      img.src = col.photoUrl;
+    }
+  });
+  if(pending === 0) callback(columns);
+}
+
+function renderGraphicCanvas(title, rows, columns){
+  const scale = 2;
+  const numDataCols = columns.length;
+  const labelColW = 150;
+  const dataColW = 150;
+  const width = labelColW + dataColW*numDataCols;
+  const rowH = 40, accentH = 6;
+  const anyName = columns.some(c=>c.name);
+  const titleHeaderH = anyName ? 50 : 44;
+  const colBarH = 70;
+  const height = titleHeaderH + accentH + colBarH + rows.length*rowH + 16;
+
+  const canvas = document.createElement('canvas');
+  canvas.width = width*scale; canvas.height = height*scale;
+  const ctx = canvas.getContext('2d');
+  ctx.scale(scale, scale);
+
+  const cardRadius = 20, borderW = 4;
+  function roundRectPath(x, y, w, h, r){
+    ctx.beginPath();
+    ctx.moveTo(x+r, y);
+    ctx.arcTo(x+w, y,   x+w, y+h, r);
+    ctx.arcTo(x+w, y+h, x,   y+h, r);
+    ctx.arcTo(x,   y+h, x,   y,   r);
+    ctx.arcTo(x,   y,   x+w, y,   r);
+    ctx.closePath();
+  }
+
+  ctx.fillStyle = '#ffffff'; ctx.fillRect(0,0,width,height);
+
+  roundRectPath(0, 0, width, height, cardRadius);
+  ctx.save();
+  ctx.clip();
+
+  const theme = window._cardTheme || DEFAULT_THEME;
+  ctx.fillStyle = theme.primary; ctx.fillRect(0,0,width,titleHeaderH);
+  ctx.fillStyle = '#ffffff'; ctx.font = 'bold 18px Arial'; ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
+  ctx.fillText(title, 16, titleHeaderH/2);
+
+  ctx.fillStyle = theme.accent; ctx.fillRect(0, titleHeaderH, width, accentH);
+
+  const barY = titleHeaderH + accentH;
+  ctx.fillStyle = '#0f0f0f'; ctx.fillRect(0, barY, width, colBarH);
+
+  ctx.fillStyle = '#ffffff'; ctx.font = 'bold 13px Arial'; ctx.textAlign = 'center';
+  ctx.fillText('STAT', labelColW/2, barY + colBarH/2);
+
+  columns.forEach((col, i)=>{
+    const cx = labelColW + dataColW*i + dataColW/2;
+    let textTopY = barY + colBarH/2;
+
+    if(col.img){
+      const r = 15;
+      const photoCY = barY + 17;
+      ctx.save();
+      ctx.beginPath(); ctx.arc(cx, photoCY, r, 0, Math.PI*2); ctx.closePath(); ctx.clip();
+      ctx.drawImage(col.img, cx-r, photoCY-r, r*2, r*2);
+      ctx.restore();
+      ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.arc(cx, photoCY, r, 0, Math.PI*2); ctx.stroke();
+      textTopY = barY + 49;
+    }
+
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 13px Arial';
+    ctx.textAlign = 'center';
+    if(col.name){
+      ctx.fillText(truncate(col.name, 16), cx, textTopY - (col.team ? 7 : 0));
+      if(col.team){
+        ctx.font = '10px Arial'; ctx.fillStyle = '#b7c4d4';
+        ctx.fillText(truncate(col.team, 20), cx, textTopY + 8);
+      }
+    } else if(col.team){
+      ctx.fillText(truncate(col.team, 16), cx, textTopY);
+    } else if(!col.img){
+      ctx.font = 'bold 13px Arial';
+      ctx.fillText('VALUE ' + (i+1), cx, textTopY);
+    }
+  });
+
+  let y = barY + colBarH;
+  rows.forEach((row) => {
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, y, width, rowH);
+
+    ctx.fillStyle = '#111111';
+    ctx.font = 'bold 13px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText(row[0], labelColW/2, y+rowH/2);
+
+    for(let c=0; c<numDataCols; c++){
+      const value = row[c+1];
+      const cx0 = labelColW + dataColW*c + dataColW/2;
+      ctx.fillStyle = '#111111';
+      ctx.font = 'bold 13px Arial';
+      ctx.textAlign = 'center';
+      ctx.fillText(value !== undefined ? String(value) : '—', cx0, y+rowH/2);
+    }
+
+    ctx.strokeStyle = '#0f0f0f'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(0,y+rowH); ctx.lineTo(width,y+rowH); ctx.stroke();
+    y += rowH;
+  });
+
+  ctx.restore(); // end clip to rounded card shape
+
+  roundRectPath(borderW/2, borderW/2, width-borderW, height-borderW, cardRadius-borderW/2);
+  ctx.strokeStyle = '#0f0f0f'; ctx.lineWidth = borderW;
+  ctx.stroke();
+
+  const link = document.createElement('a');
+  link.download = title.toLowerCase().replace(/[^a-z0-9]+/g,'-') + '.png';
+  link.href = canvas.toDataURL('image/png');
+  link.click();
+}
+
+function truncate(str, n){
+  return str.length > n ? str.slice(0, n-1) + '…' : str;
+}
+</script>
+
+</body>
+</html>

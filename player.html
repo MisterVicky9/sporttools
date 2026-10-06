@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vicky+ Player</title>
+<link rel="stylesheet" href="vickyplus.css">
+</head>
+<body>
+<div class="page-nav"><a href="vickyplus.html">← Leaderboards</a></div>
+<h2 class="pagetitle" id="pname">Player</h2>
+<div class="meta" id="pmeta"></div>
+
+<div class="card">
+  <div class="panel"><div class="row">
+    <label class="chk"><input type="checkbox" id="splitTeams" checked> Split Teams</label>
+    <button class="btn secondary" id="colsBtn" type="button">Columns</button>
+    <button class="btn" id="csvBtn" type="button">Download CSV</button>
+  </div></div>
+  <div id="pickerHost"></div>
+  <div class="status" id="status">Loading…</div>
+  <div id="chartHost"></div>
+  <div class="tablewrap"><table id="tbl"></table></div>
+  <div class="foot" id="foot"></div>
+</div>
+
+<script src="vickyplus-core.js"></script>
+<script src="vickyplus-ui.js"></script>
+<script>
+(function(){
+  var $=VPUI.$, esc=VPUI.esc, CTX, SC, PK, mine, cols=[], tableRows=[];
+  var id=new URLSearchParams(location.search).get('id');
+
+  function chart(pts){
+    if(pts.length<1){ $('chartHost').innerHTML=''; return; }
+    var W=640,H=220,L=40,R=16,T=16,B=30, ys=pts.map(function(p){return p.V;});
+    var lo=Math.min(80,Math.floor(Math.min.apply(null,ys)/10)*10), hi=Math.max(120,Math.ceil(Math.max.apply(null,ys)/10)*10);
+    var seasons=SC.seasons, x=function(s){ return L+(seasons.length>1?(s-seasons[0])/(seasons[seasons.length-1]-seasons[0]):0.5)*(W-L-R); };
+    var y=function(v){ return T+(1-(v-lo)/(hi-lo))*(H-T-B); };
+    var g='', tick;
+    for(tick=lo;tick<=hi;tick+=20) g+='<line x1="'+L+'" x2="'+(W-R)+'" y1="'+y(tick)+'" y2="'+y(tick)+'" stroke="'+(tick===100?'#999':'#e4e4e4')+'" stroke-dasharray="'+(tick===100?'4 3':'0')+'"/><text x="'+(L-6)+'" y="'+(y(tick)+4)+'" text-anchor="end" font-size="11" fill="#888">'+tick+'</text>';
+    seasons.forEach(function(s){ g+='<text x="'+x(s)+'" y="'+(H-10)+'" text-anchor="middle" font-size="11" fill="#888">'+s+'</text>'; });
+    var line=pts.map(function(p,i){ return (i?'L':'M')+x(p.Season)+','+y(p.V); }).join(' ');
+    g+='<path d="'+line+'" fill="none" stroke="#50AE26" stroke-width="2.5"/>';
+    pts.forEach(function(p){ g+='<circle cx="'+x(p.Season)+'" cy="'+y(p.V)+'" r="4" fill="#50AE26"/><text x="'+x(p.Season)+'" y="'+(y(p.V)-9)+'" text-anchor="middle" font-size="11" font-weight="700" fill="#222">'+Math.round(p.V)+'</text>'; });
+    $('chartHost').innerHTML='<svg class="chart" viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Vicky+ by season">'+g+'</svg>';
+  }
+
+  function render(){
+    var split=$('splitTeams').checked, rows=[], seasons=VP.groupBy(mine,function(r){return r.Season;});
+    var totals=seasons.map(function(g){ return VP.aggregate(g,CTX); }).sort(function(a,b){return a.Season-b.Season;});
+    totals.forEach(function(t){
+      if(split && t.rows.length>1){ t.rows.slice().sort(function(a,b){return b.IPt-a.IPt;}).forEach(function(s){ s._k='stint'; rows.push(s); }); t._k='total'; rows.push(t); }
+      else { t._k='total'; rows.push(t); }
+    });
+    var career=VP.aggregate(mine,CTX); career._k='total'; career.SeasonLabel='Career'; career.Team=''; career._career=true;
+    if(totals.length>1) rows.push(career);
+    tableRows=rows;
+    cols=[
+      {k:'Season',label:'Season',txt:true,sortable:false,get:function(r){return r.SeasonLabel;}},
+      {k:'Team',label:'Team',txt:true,sortable:false,get:function(r){return r._career?'':r.Team;}},
+      {k:'V',label:'Vicky+',bold:true,sortable:false,get:function(r){return r.V;},fmt:function(v){return v==null?'':String(Math.round(v));}}
+    ].concat(PK.cols('Team').map(function(c){ c.sortable=false; return c; }));
+    cols[0].k='Name';  // sticky first column
+    VPUI.drawTable({el:$('tbl'),cols:cols,rows:rows,rank:false,rowClass:function(r){return r._k==='stint'?'stint':'total';}});
+    chart(totals);
+    var latest=SC.seasons[SC.seasons.length-1], P=VP.project(SC).rows.filter(function(r){return r.id===id;})[0];
+    $('foot').textContent=(P?'Projection for '+(latest+1)+': Vicky+ '+Math.round(P.PV)+', '+VP.project(SC).target+' '+(P.PT==null?'n/a':P.PT.toFixed(2))+' (reliability '+Math.round(P.rel*100)+'%). ':'')+VPUI.inputsNote(CTX);
+    $('status').textContent='';
+  }
+
+  VP.fetchData('vickyplus-data.json').then(function(data){
+    CTX=VP.load(data); SC=VP.score(CTX);
+    mine=SC.recs.filter(function(r){return r.id===id;});
+    if(!mine.length){ $('status').className='status err'; $('status').textContent='Player not found.'; return; }
+    $('pickerHost').innerHTML=VPUI.PICKER_HTML; PK=new VPUI.Picker(CTX,render);
+    var seasons=mine.map(function(r){return r.Season;}), lo=Math.min.apply(null,seasons), hi=Math.max.apply(null,seasons);
+    var last=mine.filter(function(r){return r.Season===hi;}).sort(function(a,b){return b.IPt-a.IPt;})[0];
+    $('pname').textContent=mine[0].Name; document.title=mine[0].Name+' – Vicky+';
+    var career=VP.aggregate(mine,CTX);
+    $('pmeta').textContent=(last.Team?last.Team+' · ':'')+(lo===hi?lo:lo+'–'+hi)+' · '+career.IP+' IP in the data · career Vicky+ '+Math.round(career.V);
+    $('splitTeams').addEventListener('input',render);
+    $('csvBtn').addEventListener('click',function(){ VPUI.downloadCSV(cols,tableRows,'vickyplus_'+mine[0].Name.replace(/\W+/g,'_')+'.csv',false); });
+    render();
+  }).catch(function(e){ $('status').className='status err'; $('status').textContent=(location.protocol==='file:'?'Open this page from the website (or a local server). ':'')+e.message; });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,56 @@
+*{box-sizing:border-box;}
+html, body{ max-width:100%; overflow-x:hidden; }
+body{ font-family:'Segoe UI', Arial, sans-serif; background:#e8e8e8; margin:0; padding:24px; color:#222; }
+@media (max-width:600px){ body{ padding:12px; } }
+.page-nav{ margin:0 0 16px 0; display:flex; gap:8px; flex-wrap:wrap; }
+.page-nav a{ display:inline-block; font-size:13px; font-weight:600; color:#0b5cab; text-decoration:none; background:#eaf2fb; padding:8px 14px; border-radius:8px; }
+.page-nav a:hover{ background:#dbe9fa; }
+h2.pagetitle{ margin:0 0 14px 0; font-size:22px; }
+.card{ background:#fff; border-radius:12px; padding:18px; box-shadow:0 2px 8px rgba(0,0,0,0.12); margin-bottom:16px; }
+.seg{ display:flex; gap:4px; margin-bottom:10px; }
+.seg button{ flex:1; background:#f2f2f2; color:#222; border:1px solid #ddd; padding:10px 8px; font-size:15px; cursor:pointer; font-family:inherit; }
+.seg button.on{ background:#50AE26; color:#fff; border-color:#50AE26; }
+.panel{ background:#d4d4d4; border-radius:6px; padding:6px 14px; margin-bottom:12px; }
+.panel .row{ display:flex; flex-wrap:wrap; gap:8px 14px; align-items:center; justify-content:center; padding:10px 0; border-bottom:1px solid #b9b9b9; font-size:14px; }
+.panel .row:last-child{ border-bottom:none; }
+.panel label.l{ font-weight:600; color:#333; }
+.panel select, .panel input[type=number], .panel input[type=search]{ padding:7px 8px; border:1px solid #ccc; border-radius:4px; font-size:14px; background:#fff; font-family:inherit; }
+.panel input[type=number]{ width:70px; }
+.panel input[type=search]{ width:170px; }
+.panel .chk{ display:flex; align-items:center; gap:5px; cursor:pointer; }
+.panel .chk.off{ opacity:.45; pointer-events:none; }
+.panel .viewing{ font-size:14px; color:#222; text-align:center; width:100%; }
+.actions{ display:flex; gap:8px; margin-bottom:10px; flex-wrap:wrap; }
+button.btn{ background:#222; color:#fff; border:none; border-radius:6px; padding:9px 16px; font-size:14px; font-weight:600; cursor:pointer; }
+button.btn:hover{ background:#000; }
+button.btn.secondary{ background:#777; }
+.status{ font-size:13px; color:#555; margin:0 0 8px 0; }
+.status.err{ color:#b00020; font-weight:600; }
+.tablewrap{ overflow-x:auto; border:1px solid #e2e2e2; border-radius:8px; max-height:70vh; overflow-y:auto; }
+table{ border-collapse:collapse; width:100%; font-size:13px; }
+th, td{ padding:7px 10px; text-align:right; white-space:nowrap; border-bottom:1px solid #eee; }
+th{ position:sticky; top:0; background:#222; color:#fff; cursor:pointer; user-select:none; font-weight:600; z-index:2; }
+th:hover{ background:#000; }
+th.sorted{ background:#0b5cab; }
+th.nosort{ cursor:default; } th.nosort:hover{ background:#222; }
+th.txt, td.txt{ text-align:left; }
+td.rank{ color:#999; }
+td.name{ font-weight:600; position:sticky; left:0; background:#fff; z-index:1; }
+th.name{ left:0; z-index:3; }
+td.name a{ color:#0b5cab; text-decoration:none; } td.name a:hover{ text-decoration:underline; }
+tr:hover td, tr:hover td.name{ background:#f6f9fd; }
+tr.total td{ font-weight:800; background:#f3f3f3; }
+tr.stint td{ color:#666; }
+td.key{ font-weight:800; }
+.more{ margin-top:10px; }
+.hidden{ display:none !important; }
+.picker{ border:1px solid #ddd; border-radius:8px; padding:12px; margin-bottom:12px; background:#fafafa; }
+.picker .top{ display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:10px; }
+.picker input[type=search]{ padding:7px; border:1px solid #ccc; border-radius:6px; font-size:13px; width:200px; }
+.picker button{ background:#777; color:#fff; border:none; border-radius:6px; padding:7px 12px; font-size:12px; font-weight:600; cursor:pointer; }
+.picker h4{ margin:10px 0 6px 0; font-size:12px; text-transform:uppercase; letter-spacing:.04em; color:#888; }
+.picker .grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:2px 12px; max-height:220px; overflow-y:auto; }
+.picker label{ font-size:13px; display:flex; gap:6px; align-items:center; padding:2px 0; cursor:pointer; }
+.foot{ font-size:12px; color:#888; margin-top:10px; }
+.chart{ width:100%; height:auto; display:block; }
+.meta{ font-size:14px; color:#555; margin:-8px 0 14px 0; }
