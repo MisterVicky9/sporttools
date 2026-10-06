@@ -1,0 +1,778 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Trade Value Calculator</title>
+<style>
+  *{box-sizing:border-box;}
+  html, body{ max-width:100%; overflow-x:hidden; }
+  body{ font-family:'Segoe UI', Arial, sans-serif; background:#e8e8e8; margin:0; padding:24px; color:#222; }
+  @media (max-width:600px){ body{ padding:12px; } }
+  .page-nav{ margin:0 0 16px 0; }
+  .page-nav a{ display:inline-block; font-size:13px; font-weight:600; color:#0b5cab; text-decoration:none; background:#eaf2fb; padding:8px 14px; border-radius:8px; }
+  .page-nav a:hover{ background:#dbe9fa; }
+  h2.pagetitle{ margin:0 0 4px 0; font-size:22px; }
+  .calc-card{ background:#fff; border-radius:12px; padding:22px; max-width:760px; box-shadow:0 2px 8px rgba(0,0,0,0.12); }
+  .calc-card h3{ margin:0 0 4px 0; font-size:18px; }
+  .field-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(110px,1fr)); gap:10px 14px; }
+  .field-grid div{ display:flex; flex-direction:column; }
+  .field-grid label{ font-size:12px; font-weight:600; color:#444; margin-bottom:3px; }
+  .field-grid input{ padding:8px; border:1px solid #ccc; border-radius:6px; font-size:14px; width:100%; }
+  .section-label{ font-size:13px; font-weight:700; display:block; margin:16px 0 8px; }
+  .calc-card button{ margin-top:16px; background:#222; color:#fff; border:none; border-radius:6px; padding:11px 20px; font-size:14px; font-weight:600; cursor:pointer; }
+  .calc-card button:hover{ background:#000; }
+  .calc-card button.secondary{ background:#888; }
+  .result-box{ margin-top:18px; padding:14px 16px; border-radius:8px; background:#f0f7f0; border:1px solid #cfe8cf; display:none; }
+  .result-box.show{ display:block; }
+  .result-box .headline{ font-size:22px; font-weight:800; color:#1a5c1a; }
+  .result-box .breakdown{ font-size:13px; color:#555; margin-top:8px; line-height:1.7; }
+  .toggle-btn{ background:none; border:none; color:#0b5cab; font-size:13px; font-weight:600; cursor:pointer; padding:0; text-decoration:underline; margin-right:16px; }
+
+  .player-name-input{
+    border:none; border-bottom:2px solid #ccc; background:none; font-size:15px; font-weight:700;
+    padding:4px 2px; outline:none; color:#111; width:100%; max-width:260px;
+  }
+  .player-name-input:focus{ border-bottom-color:#0b1e33; }
+
+  .entry-block{ margin-top:16px; padding:14px; border:1px solid #ddd; border-radius:10px; background:#fafafa; }
+  .entry-block .entry-head{ display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap; }
+  .entry-block .col-label{ font-size:11px; font-weight:800; color:#888; text-transform:uppercase; letter-spacing:.04em; }
+  .entry-block select.type-select{ padding:5px 8px; border:1px solid #ccc; border-radius:6px; font-size:12px; }
+
+  .settings-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(130px,1fr)); gap:10px 14px; background:#f7f7f7; padding:14px; border-radius:8px; }
+  .settings-grid div{ display:flex; flex-direction:column; }
+  .settings-grid label{ font-size:11px; font-weight:600; color:#555; margin-bottom:3px; }
+  .settings-grid input{ padding:7px; border:1px solid #ccc; border-radius:6px; font-size:13px; width:100%; }
+
+  table.data-table{ width:100%; border-collapse:collapse; margin-top:10px; }
+  table.data-table th{ font-size:11px; text-align:left; color:#666; padding:4px 6px; border-bottom:2px solid #ddd; }
+  table.data-table td{ padding:4px 6px; vertical-align:middle; }
+  table.data-table input[type=text], table.data-table input[type=number]{ width:100%; padding:6px; border:1px solid #ccc; border-radius:5px; font-size:13px; }
+  table.data-table select{ width:100%; padding:6px; border:1px solid #ccc; border-radius:5px; font-size:13px; }
+  table.data-table .computed{ font-size:12px; color:#555; white-space:nowrap; font-weight:700; }
+  .remove-row-btn{ background:none; border:none; color:#c0392b; font-size:16px; cursor:pointer; padding:0 4px; line-height:1; }
+  .entry-value{ margin-top:8px; font-size:13px; font-weight:800; color:#0b1e33; }
+
+  .fairness-box{ margin-top:14px; padding:12px 14px; border-radius:8px; font-size:13px; line-height:1.7; }
+  .fairness-box.even{ background:#f0f0f0; border:1px solid #ccc; }
+  .fairness-box.over{ background:#fdecea; border:1px solid #f3b8b0; }
+  .fairness-box.under{ background:#eaf5ec; border:1px solid #b7dcc0; }
+  .subhead{ font-size:15px; font-weight:800; margin:0 0 4px; color:#0b1e33; }
+  .side-count{ font-size:12px; color:#888; margin-top:8px; }
+</style>
+<link rel="stylesheet" href="theme.css">
+<script src="site.js"></script>
+<style>
+  .calc-card button.toggle-btn, .calc-card button.toggle-btn:hover{ background:none; color:var(--blue-dark); padding:0; margin-top:0; font-weight:700; }
+  .calc-card button.toggle-btn:hover{ color:var(--red); }
+  .calc-card button.remove-row-btn, .calc-card button.remove-row-btn:hover{ background:none; color:var(--red); padding:0 4px; margin-top:0; }
+  table.data-table th{ background:none; color:var(--blue-dark); border-bottom:2px solid var(--blue); }
+  table.data-table th:hover{ background:none; }
+  .entry-block{ background:var(--blue-tint); border-color:#cfe4e8; }
+  .entry-value, .subhead{ color:var(--blue-dark); }
+  .calc-card h3.subhead{ border-left:4px solid var(--red); padding-left:8px; }
+  .settings-grid{ background:var(--blue-tint); }
+  .player-name-input:focus{ border-bottom-color:var(--blue); }
+  .result-box .headline{ color:var(--blue-dark); }
+</style>
+</head>
+<body>
+
+<h2 class="pagetitle">Trade Value Calculator</h2>
+
+<button type="button" class="toggle-btn" id="advSettingsBtn" onclick="toggleSection('advSettingsPanel', this)" style="display:block; margin-bottom:16px;">▸ Advanced Settings (market rate & prospect value table)</button>
+<div id="advSettingsPanel" style="display:none;">
+
+  <div class="calc-card">
+    <h3>Value-of-WAR Market Rate</h3>
+    <div class="settings-grid">
+      <div><label>Tier 1 max WAR</label><input type="number" id="tier1Max" value="1" step="0.1" onchange="calc()"></div>
+      <div><label>Tier 1 $M/WAR</label><input type="number" id="tier1Rate" value="8" step="0.5" onchange="calc()"></div>
+      <div><label>Tier 2 max WAR</label><input type="number" id="tier2Max" value="2" step="0.1" onchange="calc()"></div>
+      <div><label>Tier 2 $M/WAR</label><input type="number" id="tier2Rate" value="10" step="0.5" onchange="calc()"></div>
+      <div><label>Tier 3+ $M/WAR</label><input type="number" id="tier3Rate" value="12" step="0.5" onchange="calc()"></div>
+    </div>
+  </div>
+
+  <br>
+
+  <div class="calc-card">
+    <h3>Prospect FV Value Table</h3>
+    <table class="data-table" id="fvTable">
+      <thead><tr><th>FV Grade</th><th>Est. WAR/szn</th><th>Batter $</th><th>Pitcher $</th></tr></thead>
+      <tbody id="fvTableBody"></tbody>
+    </table>
+  </div>
+
+  <br>
+</div>
+
+<div id="teamsContainer"></div>
+
+<button type="button" class="toggle-btn" onclick="addTeam()" id="addTeamBtn" style="display:block; margin:4px 0 6px;">+ Add Team</button>
+<div class="side-count" id="teamsCount">2 of 6 teams used.</div>
+
+<br>
+
+<div class="calc-card">
+  <h3 class="subhead">Trade Result</h3>
+  <button class="primary" onclick="calc()">Calculate Trade</button>
+
+  <div class="result-box" id="result">
+    <div class="headline" id="headline"></div>
+    <div class="breakdown" id="breakdown"></div>
+    <button class="primary" onclick="downloadGraphic()" style="margin-top:14px;">Download Graphic</button>
+    <button onclick="downloadJSON()" class="secondary" style="margin-top:8px;">Download JSON (for Stat Card Builder)</button>
+  </div>
+</div>
+
+<script>
+const MLB_TEAMS = ["Arizona Diamondbacks","Atlanta Braves","Baltimore Orioles","Boston Red Sox",
+"Chicago Cubs","Chicago White Sox","Cincinnati Reds","Cleveland Guardians","Colorado Rockies",
+"Detroit Tigers","Houston Astros","Kansas City Royals","Los Angeles Angels","Los Angeles Dodgers",
+"Miami Marlins","Milwaukee Brewers","Minnesota Twins","New York Mets","New York Yankees",
+"Oakland Athletics","Philadelphia Phillies","Pittsburgh Pirates","San Diego Padres","San Francisco Giants",
+"Seattle Mariners","St. Louis Cardinals","Tampa Bay Rays","Texas Rangers","Toronto Blue Jays","Washington Nationals"];
+
+const TEAM_THEME_COLORS = {
+    "Arizona Diamondbacks": {primary:"#A71930", accent:"#33CCCC", light:"#DBCEAC"},
+    "Atlanta Braves": {primary:"#CE1141", accent:"#13274F", light:"#EAAA00"},
+    "Baltimore Orioles": {primary:"#DF4601", accent:"#000000", light:"#FFD9B3"},
+    "Boston Red Sox": {primary:"#BD3039", accent:"#0C2340", light:"#E3D4AD"},
+    "Chicago Cubs": {primary:"#0E3386", accent:"#CC3433", light:"#C9D8ED"},
+    "Chicago White Sox": {primary:"#27251F", accent:"#C4CED4", light:"#C4CED4"},
+    "Cincinnati Reds": {primary:"#C6011F", accent:"#000000", light:"#E3D4AD"},
+    "Cleveland Guardians": {primary:"#00385D", accent:"#E31937", light:"#C9D8ED"},
+    "Colorado Rockies": {primary:"#33006F", accent:"#C4CED4", light:"#C4CED4"},
+    "Detroit Tigers": {primary:"#0C2340", accent:"#FA4616", light:"#C9D8ED"},
+    "Houston Astros": {primary:"#002D62", accent:"#EB6E1F", light:"#C9D8ED"},
+    "Kansas City Royals": {primary:"#004687", accent:"#BD9B60", light:"#E3D4AD"},
+    "Los Angeles Angels": {primary:"#BA0021", accent:"#003263", light:"#E3D4AD"},
+    "Los Angeles Dodgers": {primary:"#005A9C", accent:"#EF3E42", light:"#C9D8ED"},
+    "Miami Marlins": {primary:"#00A3E0", accent:"#EF3340", light:"#000000"},
+    "Milwaukee Brewers": {primary:"#12284B", accent:"#FFC52F", light:"#FFC52F"},
+    "Minnesota Twins": {primary:"#002B5C", accent:"#D31145", light:"#C9D8ED"},
+    "New York Mets": {primary:"#002D72", accent:"#FF5910", light:"#C9D8ED"},
+    "New York Yankees": {primary:"#003087", accent:"#0C2340", light:"#C9D8ED"},
+    "Oakland Athletics": {primary:"#003831", accent:"#EFB21E", light:"#EFB21E"},
+    "Philadelphia Phillies": {primary:"#E81828", accent:"#002D72", light:"#E3D4AD"},
+    "Pittsburgh Pirates": {primary:"#FDB827", accent:"#27251F", light:"#FDB827"},
+    "San Diego Padres": {primary:"#2F241D", accent:"#FFC425", light:"#A2AAAD"},
+    "San Francisco Giants": {primary:"#FD5A1E", accent:"#27251F", light:"#E3D4AD"},
+    "Seattle Mariners": {primary:"#0C2C56", accent:"#005C5C", light:"#C9D8ED"},
+    "St. Louis Cardinals": {primary:"#C41E3A", accent:"#0C2340", light:"#E3D4AD"},
+    "Tampa Bay Rays": {primary:"#092C5C", accent:"#8FBCE6", light:"#F5D130"},
+    "Texas Rangers": {primary:"#003278", accent:"#C0111F", light:"#C9D8ED"},
+    "Toronto Blue Jays": {primary:"#134A8E", accent:"#1D2D5C", light:"#E8291C"},
+    "Washington Nationals": {primary:"#AB0003", accent:"#14225A", light:"#E3D4AD"}
+};
+const DEFAULT_THEME = {primary:"#50AE26", accent:"#146680", light:"#86081A"};
+
+function refreshTeamThemeDropdown(side){
+  const sel = document.getElementById('teamTheme'+side);
+  const prevValue = sel.value;
+  sel.innerHTML = '<option value="__default__">Default</option>' +
+    '<optgroup label="Team Colors">' +
+    Object.keys(TEAM_THEME_COLORS).map(t=>`<option value="${t}">${t}</option>`).join('') +
+    '</optgroup>';
+  sel.value = TEAM_THEME_COLORS[prevValue] ? prevValue : '__default__';
+  applyTeamTheme(side);
+}
+function applyTeamTheme(side){
+  const sel = document.getElementById('teamTheme'+side);
+  window['_cardTheme'+side] = (sel.value !== '__default__' && TEAM_THEME_COLORS[sel.value]) ? TEAM_THEME_COLORS[sel.value] : DEFAULT_THEME;
+}
+// Prospect FV value table -- read directly from the user's trade workbook's
+// TIERS table (identical across every sheet: Skubal, Ryan, Miller, Langeliers).
+let FV_TIERS = [
+  {label:"60 FV",      war:3.5, batter:82000000, pitcher:70000000},
+  {label:"55 FV",      war:3.0, batter:55000000, pitcher:45000000},
+  {label:"50 FV",      war:2.5, batter:45000000, pitcher:33500000},
+  {label:"50/45+ FV",  war:2.0, batter:31750000, pitcher:24250000},
+  {label:"45+ FV",     war:1.5, batter:18500000, pitcher:15000000},
+  {label:"45 FV",      war:1.5, batter:14500000, pitcher:9500000},
+  {label:"40+ FV",     war:1.0, batter:8000000,  pitcher:7000000},
+  {label:"40 FV",      war:1.0, batter:5500000,  pitcher:4000000}
+];
+
+function renderFvTable(){
+  const body = document.getElementById('fvTableBody');
+  body.innerHTML = FV_TIERS.map((t, i)=>`
+    <tr>
+      <td><input type="text" id="fv_label_${i}" value="${t.label}" onchange="syncFvTable()"></td>
+      <td><input type="number" id="fv_war_${i}" value="${t.war}" step="0.1" onchange="syncFvTable()"></td>
+      <td><input type="number" id="fv_batter_${i}" value="${t.batter}" step="50000" onchange="syncFvTable()"></td>
+      <td><input type="number" id="fv_pitcher_${i}" value="${t.pitcher}" step="50000" onchange="syncFvTable()"></td>
+    </tr>
+  `).join('');
+}
+function syncFvTable(){
+  FV_TIERS.forEach((t, i)=>{
+    t.label = document.getElementById('fv_label_'+i).value;
+    t.war = parseFloat(document.getElementById('fv_war_'+i).value) || 0;
+    t.batter = parseFloat(document.getElementById('fv_batter_'+i).value) || 0;
+    t.pitcher = parseFloat(document.getElementById('fv_pitcher_'+i).value) || 0;
+  });
+  refreshAllFvDropdowns();
+  calc();
+}
+function fvOptionsHTML(){
+  return FV_TIERS.map((t,i)=>`<option value="${i}">${t.label}</option>`).join('');
+}
+function refreshAllFvDropdowns(){
+  document.querySelectorAll('select.fv-select').forEach(sel=>{
+    const prev = sel.value;
+    sel.innerHTML = fvOptionsHTML();
+    if(prev !== null && prev !== '') sel.value = prev;
+  });
+}
+renderFvTable();
+
+function toggleSection(panelId, btn){
+  const el = document.getElementById(panelId);
+  if(!el) return;
+  const isHidden = el.style.display === 'none' || el.style.display === '';
+  el.style.display = isHidden ? 'block' : 'none';
+  if(btn){
+    btn.textContent = btn.textContent.startsWith('▸')
+      ? btn.textContent.replace('▸','▾')
+      : btn.textContent.replace('▾','▸');
+  }
+}
+
+function val(id){ const el = document.getElementById(id); return el ? (parseFloat(el.value) || 0) : 0; }
+function fmtM(n){ return (n<0?'-':'') + '$' + Math.abs(n/1000000).toFixed(2) + 'M'; }
+
+// ---------- Teams (each team owns its own outgoing asset list) ----------
+const MAX_TEAMS = 6;
+const MIN_TEAMS = 2;
+const MAX_ENTRIES_PER_TEAM = 8;
+const TEAM_LETTERS = ['A','B','C','D','E','F'];
+let teams = [];          // ordered team keys currently in play
+let teamLetterPos = 0;   // next unused letter index (never reused)
+let entries = {};        // team key -> [] of entry ids owned by (given up by) that team
+let entryType = {};      // entryId -> 'player' | 'prospect'
+let entryTeam = {};       // entryId -> home team key (who is giving it up)
+let entryCounter = 0;
+let yearRows = {};        // entryId -> [] of year-row ids (player entries only)
+let yearCounters = {};    // entryId -> counter
+
+function teamDisplayLabel(key){
+  const el = document.getElementById('teamLabel_'+key);
+  const fallback = 'Team ' + (teams.indexOf(key) + 1);
+  return el ? (el.value || fallback) : fallback;
+}
+
+function sendToOptionsHTML(){
+  return teams.map(k => `<option value="${k}">${teamDisplayLabel(k)}</option>`).join('');
+}
+
+function refreshAllSendToDropdowns(){
+  document.querySelectorAll('select.send-to-select').forEach(sel=>{
+    const prev = sel.value;
+    sel.innerHTML = sendToOptionsHTML();
+    sel.value = teams.includes(prev) ? prev : (teams[0] || '');
+  });
+}
+
+function teamCardHTML(key, idx){
+  return `<div class="calc-card" id="teamCard_${key}" style="margin-top:${idx===0?'0':'16px'};">
+    <div style="display:flex; justify-content:space-between; align-items:center;">
+      <h3 class="subhead">Team ${idx+1}</h3>
+      <button type="button" class="remove-row-btn" onclick="removeTeam('${key}')" title="Remove team" style="font-size:18px;">✕</button>
+    </div>
+    <input type="text" id="teamLabel_${key}" value="Team ${idx+1}" class="player-name-input" style="margin-bottom:6px;" onchange="refreshAllSendToDropdowns(); calc();">
+    <div style="margin-bottom:12px;">
+      <label style="font-size:12px; font-weight:600; color:#555; margin-right:8px;">Team Theme:</label>
+      <select id="teamTheme${key}" onchange="applyTeamTheme('${key}')" style="padding:6px 9px; border:1px solid #ccc; border-radius:6px; font-size:13px;"></select>
+    </div>
+    <div id="entriesContainer_${key}"></div>
+    <div style="margin-top:12px;">
+      <button type="button" class="toggle-btn" onclick="addEntry('${key}','player')">+ Add Player</button>
+      <button type="button" class="toggle-btn" onclick="addEntry('${key}','prospect')">+ Add Prospect</button>
+    </div>
+    <div class="side-count" id="entryCount_${key}">0 of ${MAX_ENTRIES_PER_TEAM} entries used.</div>
+  </div>`;
+}
+
+function updateTeamsCount(){
+  document.getElementById('teamsCount').textContent = teams.length + ' of ' + MAX_TEAMS + ' teams used.';
+  document.getElementById('addTeamBtn').style.display = teams.length >= MAX_TEAMS ? 'none' : 'block';
+}
+
+function relabelTeams(){
+  teams.forEach((key, i)=>{
+    const card = document.getElementById('teamCard_'+key);
+    if(card){
+      const h = card.querySelector('.subhead');
+      if(h) h.textContent = 'Team ' + (i+1);
+      card.style.marginTop = i === 0 ? '0' : '16px';
+    }
+  });
+}
+
+function addTeam(){
+  if(teams.length >= MAX_TEAMS) return;
+  const key = TEAM_LETTERS[teamLetterPos];
+  teamLetterPos++;
+  teams.push(key);
+  entries[key] = [];
+
+  const wrapper = document.createElement('div');
+  wrapper.innerHTML = teamCardHTML(key, teams.length - 1);
+  document.getElementById('teamsContainer').appendChild(wrapper.firstElementChild);
+
+  refreshTeamThemeDropdown(key);
+  updateTeamsCount();
+  refreshAllSendToDropdowns();
+}
+
+function removeTeam(key){
+  if(teams.length <= MIN_TEAMS){ alert('A trade needs at least ' + MIN_TEAMS + ' teams.'); return; }
+  entries[key].forEach(id=>{ delete entryType[id]; delete entryTeam[id]; delete yearRows[id]; delete yearCounters[id]; });
+  delete entries[key];
+  teams = teams.filter(k => k !== key);
+  const card = document.getElementById('teamCard_'+key);
+  if(card) card.remove();
+  relabelTeams();
+  updateTeamsCount();
+  refreshAllSendToDropdowns();
+  calc();
+}
+
+// ---------- Per-team asset entries ----------
+function updateEntryCount(teamKey){
+  const el = document.getElementById('entryCount_'+teamKey);
+  if(el) el.textContent = entries[teamKey].length + ' of ' + MAX_ENTRIES_PER_TEAM + ' entries used.';
+}
+
+function entryHeadHTML(teamKey, id, idx, type){
+  return `<div class="entry-head">
+    <div class="col-label">Asset ${idx+1} — ${type==='player'?'Player':'Prospect'}</div>
+    <div>
+      <select class="type-select" onchange="changeEntryType('${teamKey}','${id}', this.value)">
+        <option value="player" ${type==='player'?'selected':''}>Player</option>
+        <option value="prospect" ${type==='prospect'?'selected':''}>Prospect</option>
+      </select>
+      <button type="button" class="remove-row-btn" onclick="removeEntry('${teamKey}','${id}')" title="Remove">✕</button>
+    </div>
+  </div>
+  <label class="section-label" style="margin:8px 0 4px;">Sending To</label>
+  <select id="sendto_${id}" class="send-to-select" onchange="calc()"></select>`;
+}
+
+function playerEntryHTML(teamKey, id, idx){
+  return `<div class="entry-block" id="entryBlock_${id}">
+    ${entryHeadHTML(teamKey, id, idx, 'player')}
+    <label class="section-label" style="margin:12px 0 4px;">Name</label>
+    <input type="text" id="name_${id}" placeholder="Player name" class="player-name-input">
+    <table class="data-table" id="yearsTable_${id}">
+      <thead><tr><th>Year</th><th>Salary ($)</th><th>WAR</th><th>Value of WAR</th><th></th></tr></thead>
+      <tbody id="yearsBody_${id}"></tbody>
+    </table>
+    <button type="button" class="toggle-btn" onclick="addYear('${id}')" style="display:inline-block; margin-top:10px;">+ Add Year</button>
+    <button type="button" class="toggle-btn" onclick="toggleSection('yearsAdvPanel_${id}', this)" style="display:inline-block; margin-top:10px;">▸ Advanced: Playoff / QO / Considerations</button>
+    <div id="yearsAdvPanel_${id}" style="display:none; margin-top:10px;">
+      <table class="data-table" id="yearsAdvTable_${id}">
+        <thead><tr><th>Year</th><th>Playoff Value ($)</th><th>QO Value ($)</th></tr></thead>
+        <tbody id="yearsAdvBody_${id}"></tbody>
+      </table>
+      <div class="field-grid" style="max-width:220px;">
+        <div><label>Considerations ($)</label><input type="number" id="considerations_${id}" value="0" step="100000" onchange="calc()"></div>
+      </div>
+    </div>
+    <div class="entry-value" id="entryValue_${id}">Surplus: —</div>
+  </div>`;
+}
+
+function prospectEntryHTML(teamKey, id, idx){
+  return `<div class="entry-block" id="entryBlock_${id}">
+    ${entryHeadHTML(teamKey, id, idx, 'prospect')}
+    <table class="data-table" style="margin-top:12px;">
+      <thead><tr><th>Name</th><th>Position</th><th>FV Grade</th><th>Value</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><input type="text" id="name_${id}" placeholder="Prospect name" style="min-width:110px;"></td>
+          <td>
+            <select id="pos_${id}" onchange="calc()">
+              <option value="batter">Batter</option>
+              <option value="pitcher">Pitcher</option>
+            </select>
+          </td>
+          <td><select id="fv_${id}" class="fv-select" onchange="calc()">${fvOptionsHTML()}</select></td>
+          <td class="computed" id="entryValue_${id}">—</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>`;
+}
+
+function relabelEntries(teamKey){
+  entries[teamKey].forEach((id, i)=>{
+    const b = document.getElementById('entryBlock_'+id);
+    if(b){
+      const lbl = b.querySelector('.col-label');
+      if(lbl) lbl.textContent = 'Asset ' + (i+1) + ' — ' + (entryType[id]==='player' ? 'Player' : 'Prospect');
+    }
+  });
+}
+
+function addEntry(teamKey, type){
+  if(entries[teamKey].length >= MAX_ENTRIES_PER_TEAM) return;
+  entryCounter++;
+  const id = teamKey + '_e' + entryCounter;
+  entries[teamKey].push(id);
+  entryType[id] = type;
+  entryTeam[id] = teamKey;
+  const idx = entries[teamKey].length - 1;
+
+  const wrapper = document.createElement('div');
+  wrapper.innerHTML = type === 'player' ? playerEntryHTML(teamKey, id, idx) : prospectEntryHTML(teamKey, id, idx);
+  const node = wrapper.firstElementChild;
+  document.getElementById('entriesContainer_'+teamKey).appendChild(node);
+
+  const sendSel = document.getElementById('sendto_'+id);
+  if(sendSel){
+    sendSel.innerHTML = sendToOptionsHTML();
+    const homeIdx = teams.indexOf(teamKey);
+    const defaultTo = teams.length > 1 ? teams[(homeIdx + 1) % teams.length] : teamKey;
+    sendSel.value = defaultTo;
+  }
+
+  if(type === 'player'){
+    yearRows[id] = []; yearCounters[id] = 0;
+    addYear(id);
+  }
+  updateEntryCount(teamKey);
+}
+
+function removeEntry(teamKey, id){
+  const block = document.getElementById('entryBlock_'+id);
+  if(block) block.remove();
+  entries[teamKey] = entries[teamKey].filter(x => x !== id);
+  delete entryType[id];
+  delete entryTeam[id];
+  delete yearRows[id];
+  delete yearCounters[id];
+  relabelEntries(teamKey);
+  updateEntryCount(teamKey);
+  calc();
+}
+
+function changeEntryType(teamKey, id, newType){
+  const idx = entries[teamKey].indexOf(id);
+  const prevSendTo = (document.getElementById('sendto_'+id) || {}).value;
+  const prevName = (document.getElementById('name_'+id) || {}).value;
+  entryType[id] = newType;
+
+  const oldBlock = document.getElementById('entryBlock_'+id);
+  const wrapper = document.createElement('div');
+  wrapper.innerHTML = newType === 'player' ? playerEntryHTML(teamKey, id, idx) : prospectEntryHTML(teamKey, id, idx);
+  const newBlock = wrapper.firstElementChild;
+  oldBlock.replaceWith(newBlock);
+
+  const sendSel = document.getElementById('sendto_'+id);
+  if(sendSel){
+    sendSel.innerHTML = sendToOptionsHTML();
+    sendSel.value = teams.includes(prevSendTo) ? prevSendTo : (teams[0] || '');
+  }
+  const nameEl = document.getElementById('name_'+id);
+  if(nameEl && prevName) nameEl.value = prevName;
+
+  if(newType === 'player'){
+    yearRows[id] = []; yearCounters[id] = 0;
+    addYear(id);
+  } else {
+    delete yearRows[id];
+    delete yearCounters[id];
+  }
+  calc();
+}
+
+// ---------- Per-player year rows (shared logic keyed by entry id) ----------
+function addYear(entryId){
+  yearCounters[entryId] = (yearCounters[entryId] || 0) + 1;
+  const yid = entryId + '_y' + yearCounters[entryId];
+  yearRows[entryId].push(yid);
+  renderYearsTable(entryId);
+}
+function removeYear(entryId, yid){
+  yearRows[entryId] = yearRows[entryId].filter(id => id !== yid);
+  renderYearsTable(entryId);
+}
+
+function tierValueOf(war){
+  const t1max = val('tier1Max'), t1rate = val('tier1Rate');
+  const t2max = val('tier2Max'), t2rate = val('tier2Rate');
+  const t3rate = val('tier3Rate');
+  const tier1 = Math.min(Math.max(war,0), t1max);
+  const tier2 = Math.min(Math.max(war - t1max, 0), Math.max(t2max - t1max, 0));
+  const tier3 = Math.max(war - t2max, 0);
+  return (tier1*t1rate + tier2*t2rate + tier3*t3rate) * 1000000;
+}
+
+function renderYearsTable(entryId){
+  const body = document.getElementById('yearsBody_' + entryId);
+  const advBody = document.getElementById('yearsAdvBody_' + entryId);
+  const rows = yearRows[entryId];
+  if(!body) return;
+
+  body.innerHTML = rows.map((yid, i)=>{
+    const g = (pfx)=>{ const el = document.getElementById(pfx+yid); return el ? el.value : ''; };
+    const yearLabel = g('yr_label') || String(new Date().getFullYear() + i);
+    return `<tr>
+      <td><input type="text" id="yr_label${yid}" value="${yearLabel}" style="width:70px;" onchange="calc()"></td>
+      <td><input type="number" id="yr_salary${yid}" value="${g('yr_salary')}" step="100000" onchange="calc()"></td>
+      <td><input type="number" id="yr_war${yid}" value="${g('yr_war')}" step="0.1" style="width:70px;" onchange="calc()"></td>
+      <td class="computed" id="yr_computed${yid}">—</td>
+      <td><button type="button" class="remove-row-btn" onclick="removeYear('${entryId}','${yid}')" title="Remove year">✕</button></td>
+    </tr>`;
+  }).join('');
+
+  if(advBody){
+    advBody.innerHTML = rows.map((yid, i)=>{
+      const g = (pfx)=>{ const el = document.getElementById(pfx+yid); return el ? el.value : ''; };
+      return `<tr>
+        <td class="computed">Year ${i+1}</td>
+        <td><input type="number" id="yr_playoff${yid}" value="${g('yr_playoff')}" step="100000" onchange="calc()"></td>
+        <td><input type="number" id="yr_qo${yid}" value="${g('yr_qo')}" step="100000" onchange="calc()"></td>
+      </tr>`;
+    }).join('');
+  }
+}
+
+function computePlayerEntry(entryId){
+  const rows = yearRows[entryId] || [];
+  if(rows.length === 0) return null;
+  const considerations = val('considerations_'+entryId);
+
+  let totalSalary = 0, totalWAR = 0, totalValue = considerations;
+  const yearBreakdown = [];
+
+  rows.forEach((yid, i)=>{
+    const label = (document.getElementById('yr_label'+yid) || {}).value || ('Year ' + (i+1));
+    const salary = val('yr_salary'+yid);
+    const war = val('yr_war'+yid);
+    const playoff = val('yr_playoff'+yid);
+    const qo = val('yr_qo'+yid);
+    const warValue = tierValueOf(war);
+    const yearValue = warValue + playoff + qo;
+
+    const cEl = document.getElementById('yr_computed'+yid);
+    if(cEl) cEl.textContent = '$' + (warValue/1000000).toFixed(2) + 'M';
+
+    totalSalary += salary;
+    totalWAR += war;
+    totalValue += yearValue;
+
+    yearBreakdown.push({ label, salary, war, playoff, qo, warValue, yearValue });
+  });
+
+  const surplus = totalValue - totalSalary;
+  return { totalSalary, totalWAR, totalValue, surplus, considerations, yearBreakdown };
+}
+
+function computeProspectEntry(entryId){
+  const posEl = document.getElementById('pos_'+entryId);
+  const fvEl = document.getElementById('fv_'+entryId);
+  if(!posEl || !fvEl) return null;
+  const pos = posEl.value;
+  const tier = FV_TIERS[parseInt(fvEl.value,10)] || FV_TIERS[0];
+  const value = pos === 'pitcher' ? tier.pitcher : tier.batter;
+  return { pos, tierLabel: tier.label, value };
+}
+
+// ---------- Net value per team: Received − Given Up ----------
+function calc(){
+  const assetInfo = {};
+
+  teams.forEach(teamKey=>{
+    entries[teamKey].forEach(id=>{
+      const name = (document.getElementById('name_'+id) || {}).value || '';
+      let value = 0, sub = '';
+      if(entryType[id] === 'player'){
+        const res = computePlayerEntry(id);
+        value = res ? res.surplus : 0;
+        sub = 'Surplus';
+        const out = document.getElementById('entryValue_'+id);
+        if(out) out.textContent = 'Surplus: ' + fmtM(value);
+      } else {
+        const res = computeProspectEntry(id);
+        value = res ? res.value : 0;
+        sub = res ? res.tierLabel : 'Prospect';
+        const out = document.getElementById('entryValue_'+id);
+        if(out) out.textContent = fmtM(value);
+      }
+      const sendTo = (document.getElementById('sendto_'+id) || {}).value;
+      assetInfo[id] = { value, label: name || sub, sub, from: teamKey, to: sendTo };
+    });
+  });
+
+  const results = teams.map(key=>{
+    let received = 0, givenUp = 0;
+    const receivedItems = [], givenItems = [];
+    Object.keys(assetInfo).forEach(id=>{
+      const a = assetInfo[id];
+      if(a.from === key){ givenUp += a.value; givenItems.push({ name: a.label, sub: a.sub, value: a.value }); }
+      if(a.to === key){ received += a.value; receivedItems.push({ name: a.label, sub: a.sub, value: a.value }); }
+    });
+    return { key, label: teamDisplayLabel(key), received, givenUp, net: received - givenUp, receivedItems, givenItems };
+  });
+
+  document.getElementById('headline').innerHTML = results.map(r=>
+    `${r.label}: ${r.net >= 0 ? '+' : ''}${fmtM(r.net)}`
+  ).join(' &nbsp;|&nbsp; ');
+
+  let bd = results.map(r=>{
+    const verdict = r.net > 0 ? 'Underpaid (came out ahead)' : (r.net < 0 ? 'Overpaid (gave up more than it got)' : 'Even');
+    const recv = r.receivedItems.length ? r.receivedItems.map(x => `${x.name} (${fmtM(x.value)})`).join(', ') : '—';
+    const gave = r.givenItems.length ? r.givenItems.map(x => `${x.name} (${fmtM(x.value)})`).join(', ') : '—';
+    return `<strong>${r.label}</strong> — ${verdict}: ${r.net >= 0 ? '+' : ''}${fmtM(r.net)}<br>Received: ${recv}<br>Gave up: ${gave}`;
+  }).join('<br><br>');
+  document.getElementById('breakdown').innerHTML = bd;
+  document.getElementById('result').classList.add('show');
+
+  window._tradeResults = results;
+}
+
+function downloadGraphic(){
+  if(!window._tradeResults) return;
+  renderTradeGraphic(window._tradeResults);
+}
+
+function downloadJSON(){
+  if(!window._tradeResults) return;
+  const results = window._tradeResults;
+
+  const state = {
+    version: 1,
+    title: 'Trade Comparison',
+    team: '',
+    cardStyle: 'table',
+    mainPhoto: null,
+    columns: results.map(r => { const sel = document.getElementById('teamTheme'+r.key); const tm = sel && TEAM_THEME_COLORS[sel.value] ? sel.value : ''; return { label: r.label, team: tm, color: '#111111', photo: null }; }),
+    rows: [
+      { label: 'Received',  isPctl: false, values: results.map(r => ({ value: '$' + (r.received/1000000).toFixed(1) + 'M', rawstat: '' })) },
+      { label: 'Gave Up',   isPctl: false, values: results.map(r => ({ value: '$' + (r.givenUp/1000000).toFixed(1) + 'M', rawstat: '' })) },
+      { label: 'Net',       isPctl: false, values: results.map(r => ({ value: (r.net>=0?'+':'-') + '$' + Math.abs(r.net/1000000).toFixed(1) + 'M', rawstat: '' })) }
+    ]
+  };
+
+  const blob = new Blob([JSON.stringify(state, null, 2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = 'trade-comparison.json';
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
+function truncate(str, n){
+  return str.length > n ? str.slice(0, n-1) + '…' : str;
+}
+
+// ---- Multi-team trade graphic: one themed column per team, Received / Gave Up / Net ----
+function renderTradeGraphic(results){
+  const scale = 2;
+  const colW = 210;
+  const n = results.length;
+  const width = colW * n;
+  const rowH = 26;
+  const titleH = 40, accentH = 5, subHeaderH = 22, netRowH = 36;
+  const maxReceived = Math.max(1, ...results.map(r => r.receivedItems.length));
+  const maxGiven = Math.max(1, ...results.map(r => r.givenItems.length));
+  const height = titleH + accentH + subHeaderH + maxReceived*rowH + subHeaderH + maxGiven*rowH + netRowH + 16;
+
+  const canvas = document.createElement('canvas');
+  canvas.width = width*scale; canvas.height = height*scale;
+  const ctx = canvas.getContext('2d');
+  ctx.scale(scale, scale);
+
+  const cardRadius = 20, borderW = 4;
+  function roundRectPath(x, y, w, h, r){
+    ctx.beginPath();
+    ctx.moveTo(x+r, y);
+    ctx.arcTo(x+w, y,   x+w, y+h, r);
+    ctx.arcTo(x+w, y+h, x,   y+h, r);
+    ctx.arcTo(x,   y+h, x,   y,   r);
+    ctx.arcTo(x,   y,   x+w, y,   r);
+    ctx.closePath();
+  }
+
+  ctx.fillStyle = '#ffffff'; ctx.fillRect(0,0,width,height);
+
+  roundRectPath(0, 0, width, height, cardRadius);
+  ctx.save();
+  ctx.clip();
+
+  function drawItemRow(x0, y, item, colW){
+    ctx.fillStyle = '#ffffff'; ctx.fillRect(x0, y, colW, rowH);
+    if(item){
+      ctx.fillStyle = '#111111'; ctx.font = 'bold 11px Arial'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+      ctx.fillText(truncate(item.name, 15), x0+8, y + rowH/2 - 6);
+      ctx.fillStyle = '#777777'; ctx.font = '9px Arial';
+      ctx.fillText(item.sub, x0+8, y + rowH/2 + 7);
+      ctx.fillStyle = '#111111'; ctx.font = 'bold 11px Arial'; ctx.textAlign = 'right';
+      ctx.fillText(fmtM(item.value), x0+colW-8, y + rowH/2);
+    }
+    ctx.strokeStyle = '#e2e2e2'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(x0, y+rowH); ctx.lineTo(x0+colW, y+rowH); ctx.stroke();
+  }
+
+  results.forEach((r, i)=>{
+    const theme = window['_cardTheme'+r.key] || DEFAULT_THEME;
+    const x0 = colW * i;
+
+    ctx.fillStyle = theme.primary; ctx.fillRect(x0, 0, colW, titleH);
+    ctx.fillStyle = '#ffffff'; ctx.font = 'bold 13px Arial'; ctx.textBaseline = 'middle'; ctx.textAlign = 'center';
+    ctx.fillText(truncate(r.label, 18), x0 + colW/2, titleH/2);
+
+    ctx.fillStyle = theme.accent; ctx.fillRect(x0, titleH, colW, accentH);
+
+    let y = titleH + accentH;
+
+    ctx.fillStyle = '#0f0f0f'; ctx.fillRect(x0, y, colW, subHeaderH);
+    ctx.fillStyle = '#ffffff'; ctx.font = 'bold 10px Arial'; ctx.textAlign = 'center';
+    ctx.fillText('RECEIVED', x0 + colW/2, y + subHeaderH/2);
+    y += subHeaderH;
+    for(let j=0; j<maxReceived; j++){ drawItemRow(x0, y, r.receivedItems[j], colW); y += rowH; }
+
+    ctx.fillStyle = '#0f0f0f'; ctx.fillRect(x0, y, colW, subHeaderH);
+    ctx.fillStyle = '#ffffff'; ctx.font = 'bold 10px Arial'; ctx.textAlign = 'center';
+    ctx.fillText('GAVE UP', x0 + colW/2, y + subHeaderH/2);
+    y += subHeaderH;
+    for(let j=0; j<maxGiven; j++){ drawItemRow(x0, y, r.givenItems[j], colW); y += rowH; }
+
+    const netColor = r.net >= 0 ? '#1a5c1a' : '#a71930';
+    ctx.fillStyle = netColor; ctx.fillRect(x0, y, colW, netRowH);
+    ctx.fillStyle = '#ffffff'; ctx.font = 'bold 12px Arial'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('NET ' + (r.net>=0?'+':'') + fmtM(r.net), x0 + colW/2, y + netRowH/2);
+
+    if(i > 0){
+      ctx.strokeStyle = '#0f0f0f'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(x0, 0); ctx.lineTo(x0, height); ctx.stroke();
+    }
+  });
+
+  ctx.restore();
+
+  roundRectPath(borderW/2, borderW/2, width-borderW, height-borderW, cardRadius-borderW/2);
+  ctx.strokeStyle = '#0f0f0f'; ctx.lineWidth = borderW;
+  ctx.stroke();
+
+  const link = document.createElement('a');
+  link.download = 'trade-comparison.png';
+  link.href = canvas.toDataURL('image/png');
+  link.click();
+}
+
+// Seed with two teams, each with one player asset to start
+addTeam();
+addTeam();
+addEntry('A', 'player');
+addEntry('B', 'player');
+</script>
+
+</body>
+</html>
