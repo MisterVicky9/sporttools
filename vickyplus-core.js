@@ -175,6 +175,7 @@ var VP = (function(){
       case 'int':    return function(v){ return v==null?'':String(Math.round(v)); };
       case 'd1':     return function(v){ return v==null?'':v.toFixed(1); };
       case 'd2':     return function(v){ return v==null?'':v.toFixed(2); };
+      case 'd3':     return function(v){ if(v==null) return ''; var t=v.toFixed(3); return Math.abs(v)<1 ? t.replace(/^(-?)0\./,'$1.') : t; };
       default:       return function(v){ return v==null?'':String(v); };
     }
   }

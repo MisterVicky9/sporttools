@@ -47,14 +47,14 @@ var VPUI = (function(){
   }
 
   // Column picker: shared selection (saved in localStorage) across pages.
-  function Picker(ctx,onChange){
-    var self=this; this.ctx=ctx; this.onChange=onChange;
-    var saved=null; try{ saved=JSON.parse(lsGet(LS_KEY)); }catch(e){}
-    this.chosen=Array.isArray(saved)? saved.filter(function(n){ return n in ctx.meta; }) : VP.defaultCols(ctx);
+  function Picker(ctx,onChange,opts){
+    var self=this; this.ctx=ctx; this.onChange=onChange; this.key=(opts&&opts.key)||LS_KEY; this.defaults=(opts&&opts.defaults)||function(c){ return VP.defaultCols(c); };
+    var saved=null; try{ saved=JSON.parse(lsGet(this.key)); }catch(e){}
+    this.chosen=Array.isArray(saved)? saved.filter(function(n){ return n in ctx.meta; }) : this.defaults(ctx);
     $('pickQ').addEventListener('input',function(){ self.draw(); });
     $('colsBtn').addEventListener('click',function(){ $('picker').classList.toggle('hidden'); });
     $('pickClear').addEventListener('click',function(){ self.set([]); });
-    $('pickReset').addEventListener('click',function(){ self.set(VP.defaultCols(ctx)); });
+    $('pickReset').addEventListener('click',function(){ self.set(self.defaults(ctx)); });
     $('pickStats').addEventListener('click',function(){
       self.set(self.chosen.concat(ctx.columns.filter(function(c){return c.kind==='stat'&&self.chosen.indexOf(c.name)<0;}).map(function(c){return c.name;})));
     });
@@ -65,7 +65,7 @@ var VPUI = (function(){
     });
     this.draw();
   }
-  Picker.prototype.save=function(){ lsSet(LS_KEY,JSON.stringify(this.chosen)); };
+  Picker.prototype.save=function(){ lsSet(this.key,JSON.stringify(this.chosen)); };
   Picker.prototype.set=function(a){ this.chosen=a; this.save(); this.draw(); this.onChange(); };
   Picker.prototype.draw=function(){
     var self=this, q=$('pickQ').value.trim().toLowerCase();

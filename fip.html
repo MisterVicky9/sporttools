@@ -10,7 +10,7 @@
   body{ font-family:'Segoe UI', Arial, sans-serif; background:#e8e8e8; margin:0; padding:24px; color:#222; }
   @media (max-width:600px){ body{ padding:12px; } }
   .page-nav{ margin:0 0 16px 0; }
-  .page-nav a{ display:inline-block; font-size:13px; font-weight:600; color:#17479E; text-decoration:none; background:#E6EDF8; padding:8px 14px; border-radius:8px; }
+  .page-nav a{ display:inline-block; font-size:13px; font-weight:600; color:#3A9098; text-decoration:none; background:#E8F4F6; padding:8px 14px; border-radius:8px; }
   .page-nav a:hover{ background:#dbe9fa; }
   h2.pagetitle{ margin:0 0 4px 0; font-size:22px; }
   .calc-card{ background:#fff; border-radius:12px; padding:22px; max-width:600px; box-shadow:0 2px 8px rgba(0,0,0,0.12); }
@@ -24,7 +24,7 @@
   .calc-card button{ margin-top:16px; background:#222; color:#fff; border:none; border-radius:6px; padding:11px 20px; font-size:14px; font-weight:600; cursor:pointer; }
   .calc-card button:hover{ background:#000; }
   .calc-card button.secondary{ background:#888; }
-  .toggle-btn{ background:none; border:none; color:#17479E; font-size:13px; font-weight:600; cursor:pointer; padding:0; text-decoration:underline; }
+  .toggle-btn{ background:none; border:none; color:#3A9098; font-size:13px; font-weight:600; cursor:pointer; padding:0; text-decoration:underline; }
   .result-box{ margin-top:18px; padding:14px 16px; border-radius:8px; background:#f0f7f0; border:1px solid #cfe8cf; display:none; }
   .result-box.show{ display:block; }
   .result-box .headline{ font-size:26px; font-weight:800; color:#1a5c1a; }
@@ -36,18 +36,18 @@
     border:none; border-bottom:2px solid #ccc; background:none; font-size:16px; font-weight:700;
     padding:4px 2px; outline:none; color:#111;
   }
-  .player-name-input:focus{ border-bottom-color:#0E2F6B; }
+  .player-name-input:focus{ border-bottom-color:#27646B; }
   .team-select{
     border:none; border-bottom:2px solid #ccc; background:none; font-size:14px; font-weight:600;
     padding:5px 2px; outline:none; color:#111; max-width:170px;
   }
-  .team-select:focus{ border-bottom-color:#0E2F6B; }
+  .team-select:focus{ border-bottom-color:#27646B; }
   .headshot-thumb{ cursor:pointer; display:inline-block; vertical-align:middle; }
   .headshot-thumb.empty .headshot-placeholder{
-    font-size:13px; font-weight:600; color:#17479E; text-decoration:underline;
+    font-size:13px; font-weight:600; color:#3A9098; text-decoration:underline;
   }
   .headshot-thumb.has-photo{
-    width:64px; height:64px; border-radius:50%; overflow:hidden; border:3px solid #0E2F6B;
+    width:64px; height:64px; border-radius:50%; overflow:hidden; border:3px solid #27646B;
   }
   .headshot-thumb.has-photo img{ width:100%; height:100%; object-fit:cover; }
 
@@ -395,7 +395,7 @@ function renderGraphicCanvas(title, rows, columns){
 
   ctx.fillStyle = '#ffffff'; ctx.fillRect(0,0,width,height);
 
-  ctx.fillStyle = '#0E2F6B'; ctx.fillRect(0,0,width,titleHeaderH);
+  ctx.fillStyle = '#27646B'; ctx.fillRect(0,0,width,titleHeaderH);
   ctx.fillStyle = '#ffffff'; ctx.font = 'bold 18px Arial'; ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
   ctx.fillText(title, 16, titleHeaderH/2);
 
