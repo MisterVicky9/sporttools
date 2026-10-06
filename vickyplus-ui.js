@@ -113,5 +113,47 @@ var VPUI = (function(){
     var b=btoa(unescape(encodeURIComponent(JSON.stringify(state)))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
     location.href='statcard.html#vp='+b;
   }
-  return {$:$, esc:esc, dataCol:dataCol, sortRows:sortRows, drawTable:drawTable, downloadCSV:downloadCSV, Picker:Picker, PICKER_HTML:PICKER_HTML, inputsNote:inputsNote, teamName:teamName, buildCardState:buildCardState, launchCard:launchCard};
+
+  // Season-by-season line chart of any stat. opts: {host, ctx, extra:[{k,label,get,fmt}], rows (one total row per season), seasons, def (key)}
+  var chartKey=null, showLg=(lsGet('vp_chart_lg')!=='0');
+  function statChart(o){
+    var opts=[].concat(o.extra||[]);
+    Object.keys(o.ctx.meta).forEach(function(n){
+      var m=o.ctx.meta[n]; if(m.type==='text'||n==='Season'||n==='Name'||n==='Team') return;
+      opts.push(dataCol(o.ctx,n));
+    });
+    opts=opts.filter(function(c){ return o.rows.some(function(r){ var v=c.get(r); return typeof v==='number'&&isFinite(v); }); });
+    var seen={}; opts=opts.filter(function(c){ if(seen[c.label]) return false; seen[c.label]=1; return true; });
+    if(!opts.length){ o.host.innerHTML=''; return; }
+    var cur=opts.filter(function(c){ return c.k===chartKey; })[0] || opts.filter(function(c){ return c.k===o.def; })[0] || opts[0];
+    function draw(){
+      var pts=o.rows.map(function(r){ return {Season:r.Season, y:cur.get(r), r:r}; }).filter(function(p){ return typeof p.y==='number'&&isFinite(p.y); });
+      var W=640,H=220,L=48,R=16,T=18,B=30;
+      var meta=o.ctx.meta[cur.label], plain=meta&&meta.agg==='sum';
+      var lg=!showLg? [] : o.seasons.map(function(s){
+        var rs=o.pop? o.pop(s) : [], sw=0, sv=0, n=0;
+        rs.forEach(function(r){ var v=cur.get(r); if(typeof v!=='number'||!isFinite(v)) return; var w=plain?1:(o.wt(r)||0); sw+=w; sv+=v*w; n++; });
+        return (n>=5&&sw>0)? {Season:s, y:sv/sw} : null;
+      }).filter(Boolean);
+      var ys=pts.map(function(p){return p.y;}).concat(lg.map(function(p){return p.y;}));
+      var lo=Math.min.apply(null,ys), hi=Math.max.apply(null,ys); if(hi===lo){ hi+=1; lo-=1; }
+      var span=hi-lo, pw=Math.pow(10,Math.floor(Math.log10(span))), step=[1,2,2.5,5,10].map(function(m){return m*pw;}).filter(function(s){ return span/s<=6; })[0]||pw*10;
+      lo=Math.floor(lo/step-1e-9)*step; hi=Math.ceil(hi/step+1e-9)*step;
+      var sea=o.seasons, x=function(s){ return L+(sea.length>1?(s-sea[0])/(sea[sea.length-1]-sea[0]):0.5)*(W-L-R); };
+      var y=function(v){ return T+(1-(v-lo)/(hi-lo))*(H-T-B); };
+      var f=function(v,r){ return cur.fmt? cur.fmt(v,r) : (Math.abs(v)>=100? String(Math.round(v)) : (+v.toFixed(3)).toString()); };
+      var g='', t;
+      for(t=lo;t<=hi+step/2;t+=step){ var yy=y(t); g+='<line x1="'+L+'" x2="'+(W-R)+'" y1="'+yy+'" y2="'+yy+'" stroke="#e4e4e4"/><text x="'+(L-6)+'" y="'+(yy+4)+'" text-anchor="end" font-size="11" fill="#888">'+esc(f(+t.toFixed(6)))+'</text>'; }
+      if(lg.length) g+='<path d="'+lg.map(function(p,i){ return (i?'L':'M')+x(p.Season)+','+y(p.y); }).join(' ')+'" fill="none" stroke="#C8202F" stroke-width="2" stroke-dasharray="5 4"/>'+lg.map(function(p){ return '<circle cx="'+x(p.Season)+'" cy="'+y(p.y)+'" r="2.5" fill="#C8202F"/>'; }).join('');
+      sea.forEach(function(s){ g+='<text x="'+x(s)+'" y="'+(H-10)+'" text-anchor="middle" font-size="11" fill="#888">'+s+'</text>'; });
+      g+='<path d="'+pts.map(function(p,i){ return (i?'L':'M')+x(p.Season)+','+y(p.y); }).join(' ')+'" fill="none" stroke="#3A9098" stroke-width="2.5"/>';
+      pts.forEach(function(p){ g+='<circle cx="'+x(p.Season)+'" cy="'+y(p.y)+'" r="4" fill="#3A9098"/><text x="'+x(p.Season)+'" y="'+(y(p.y)-9)+'" text-anchor="middle" font-size="11" font-weight="700" fill="#222">'+esc(f(p.y,p.r))+'</text>'; });
+      o.host.querySelector('.chartsvg').innerHTML='<svg class="chart" viewBox="0 0 '+W+' '+H+'" role="img" aria-label="'+esc(cur.label)+' by season">'+g+'</svg>';
+    }
+    o.host.innerHTML='<div style="margin:0 0 6px"><select class="chartsel" aria-label="Chart stat" style="padding:6px 8px;border:1px solid #cfc8b8;border-radius:4px;font-size:14px;background:#fff">'+opts.map(function(c){ return '<option value="'+esc(c.k)+'"'+(c===cur?' selected':'')+'>'+esc(c.label)+'</option>'; }).join('')+'</select> <label style="font-size:13px;color:#C8202F;margin-left:10px;cursor:pointer;white-space:nowrap"><input type="checkbox" class="chartlg"'+(showLg?' checked':'')+'> - - League average</label></div><div class="chartsvg"></div>';
+    o.host.querySelector('.chartsel').onchange=function(){ var k=this.value; cur=opts.filter(function(c){return c.k===k;})[0]; chartKey=k; draw(); };
+    o.host.querySelector('.chartlg').onchange=function(){ showLg=this.checked; lsSet('vp_chart_lg',showLg?'1':'0'); draw(); };
+    draw();
+  }
+  return {statChart:statChart, $:$, esc:esc, dataCol:dataCol, sortRows:sortRows, drawTable:drawTable, downloadCSV:downloadCSV, Picker:Picker, PICKER_HTML:PICKER_HTML, inputsNote:inputsNote, teamName:teamName, buildCardState:buildCardState, launchCard:launchCard};
 })();

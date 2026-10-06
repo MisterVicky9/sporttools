@@ -22,8 +22,8 @@
   </div></div>
   <div id="pickerHost"></div>
   <div class="status" id="status">Loading…</div>
-  <div id="chartHost"></div>
   <div class="tablewrap"><table id="tbl"></table></div>
+  <div id="chartHost" style="margin-top:16px"></div>
 </div>
 
 <script src="vickyplus-core.js"></script>
@@ -64,21 +64,12 @@
   }
   function val(r,name){ return name in CTX.idx ? r.raw[CTX.idx[name]] : null; }
 
-  function chart(pts){
-    if(pts.length<1){ $('chartHost').innerHTML=''; return; }
-    var W=640,H=220,L=40,R=16,T=16,B=30, ys=pts.map(function(p){return p.y;});
-    var lo=Math.min(60,Math.floor(Math.min.apply(null,ys)/20)*20), hi=Math.max(140,Math.ceil(Math.max.apply(null,ys)/20)*20);
-    var seasons=Array.from(new Set(RECS.map(function(r){return r.Season;}))).sort();
-    var x=function(s){ return L+(seasons.length>1?(s-seasons[0])/(seasons[seasons.length-1]-seasons[0]):0.5)*(W-L-R); };
-    var y=function(v){ return T+(1-(v-lo)/(hi-lo))*(H-T-B); };
-    var g='', tick;
-    for(tick=lo;tick<=hi;tick+=20) g+='<line x1="'+L+'" x2="'+(W-R)+'" y1="'+y(tick)+'" y2="'+y(tick)+'" stroke="'+(tick===100?'#C8202F':'#e4e4e4')+'" stroke-dasharray="'+(tick===100?'4 3':'0')+'"/><text x="'+(L-6)+'" y="'+(y(tick)+4)+'" text-anchor="end" font-size="11" fill="#888">'+tick+'</text>';
-    seasons.forEach(function(s){ g+='<text x="'+x(s)+'" y="'+(H-10)+'" text-anchor="middle" font-size="11" fill="#888">'+s+'</text>'; });
-    g+='<path d="'+pts.map(function(p,i){ return (i?'L':'M')+x(p.Season)+','+y(p.y); }).join(' ')+'" fill="none" stroke="#3A9098" stroke-width="2.5"/>';
-    pts.forEach(function(p){ g+='<circle cx="'+x(p.Season)+'" cy="'+y(p.y)+'" r="4" fill="#3A9098"/><text x="'+x(p.Season)+'" y="'+(y(p.y)-9)+'" text-anchor="middle" font-size="11" font-weight="700" fill="#222">'+Math.round(p.y)+'</text>'; });
-    $('chartHost').innerHTML='<svg class="chart" viewBox="0 0 '+W+' '+H+'" role="img" aria-label="'+METRIC+' by season">'+g+'</svg>';
+  var POP=null;
+  function popFor(s){
+    if(!POP){ var m={}; RECS.forEach(function(r){ var k=r.id+'|'+r.Season; (m[k]=m[k]||[]).push(r); });
+      POP={}; Object.keys(m).forEach(function(k){ var g=m[k], t=g.length===1?g[0]:combine(g); if(t.PA>=100) (POP[t.Season]=POP[t.Season]||[]).push(t); }); }
+    return POP[s]||[];
   }
-
   function render(){
     var split=$('splitTeams').checked, rows=[], bySeason={};
     mine.forEach(function(r){ (bySeason[r.Season]=bySeason[r.Season]||[]).push(r); });
@@ -98,7 +89,7 @@
       {k:'Team',label:'Team',txt:true,sortable:false,get:function(r){return r._career?'':r.Team;}}
     ].concat(PK.cols('Team').map(function(c){ c.sortable=false; return c; }));
     VPUI.drawTable({el:$('tbl'),cols:cols,rows:rows,rank:false,rowClass:function(r){return r._k==='stint'?'stint':'total';}});
-    chart(totals.map(function(t){ return {Season:t.Season, y:val(t,METRIC)}; }).filter(function(p){ return p.y!=null; }));
+    VPUI.statChart({host:$('chartHost'), ctx:CTX, rows:totals, pop:popFor, wt:function(r){ return r.PA; }, seasons:Array.from(new Set(RECS.map(function(r){return r.Season;}))).sort(), def:'c:'+METRIC});
     $('status').textContent='';
   }
 
