@@ -16,6 +16,8 @@
     --col4:#1A5FB4;
     --col5:#2E7D32;
     --col6:#6A1B9A;
+    --col7:#B26A00;
+    --col8:#00796B;
   }
   *{box-sizing:border-box;}
   html, body{ max-width:100%; overflow-x:hidden; }
@@ -151,12 +153,16 @@
   tbody td.col-c4{ color:var(--col4); }
   tbody td.col-c5{ color:var(--col5); }
   tbody td.col-c6{ color:var(--col6); }
+  tbody td.col-c7{ color:var(--col7); }
+  tbody td.col-c8{ color:var(--col8); }
   thead td.col-c1{ background:var(--col1-bg,#0f0f0f); color:var(--col1-fg,#fff); border-bottom:6px solid var(--col1-accent,#0f0f0f); }
   thead td.col-c2{ background:var(--col2-bg,#0f0f0f); color:var(--col2-fg,#fff); border-bottom:6px solid var(--col2-accent,#0f0f0f); }
   thead td.col-c3{ background:var(--col3-bg,#0f0f0f); color:var(--col3-fg,#fff); border-bottom:6px solid var(--col3-accent,#0f0f0f); }
   thead td.col-c4{ background:var(--col4-bg,#0f0f0f); color:var(--col4-fg,#fff); border-bottom:6px solid var(--col4-accent,#0f0f0f); }
   thead td.col-c5{ background:var(--col5-bg,#0f0f0f); color:var(--col5-fg,#fff); border-bottom:6px solid var(--col5-accent,#0f0f0f); }
   thead td.col-c6{ background:var(--col6-bg,#0f0f0f); color:var(--col6-fg,#fff); border-bottom:6px solid var(--col6-accent,#0f0f0f); }
+  thead td.col-c7{ background:var(--col7-bg,#0f0f0f); color:var(--col7-fg,#fff); border-bottom:6px solid var(--col7-accent,#0f0f0f); }
+  thead td.col-c8{ background:var(--col8-bg,#0f0f0f); color:var(--col8-fg,#fff); border-bottom:6px solid var(--col8-accent,#0f0f0f); }
 
   .col-controls{
     display:flex; align-items:center; justify-content:center; gap:8px; margin-top:6px; flex-wrap:wrap;
@@ -334,7 +340,7 @@
     <input type="file" id="csvFileInput" accept=".csv,text/csv" style="display:none;">
     <div class="hint" style="margin-top:6px;">CSV should have players as rows and stats as columns (a typical spreadsheet export) — the first column in each row is used as that player's column name.</div>
     <div id="csvMapUI" style="display:none; margin-top:10px;">
-      <div class="hint" style="margin-top:0;">Check which rows become columns, in the order you want them (up to 6). Each CSV column (other than the first) becomes one new stat row, with every selected player's value placed in that same row.</div>
+      <div class="hint" style="margin-top:0;">Check which rows become columns, in the order you want them (up to 8). Each CSV column (other than the first) becomes one new stat row, with every selected player's value placed in that same row.</div>
       <div id="csvRowList" style="max-height:220px; overflow-y:auto; border:1px solid #ddd; border-radius:6px; padding:8px; margin-top:8px; background:#fafafa;"></div>
       <button onclick="importCsvSelection()" style="margin-top:10px;">Add Selected as Columns</button>
       <button class="secondary" onclick="cancelCsvImport()">Cancel</button>
@@ -697,7 +703,7 @@ const DEFAULT_ROWS = [
 ];
 
 let colCount = 2; // number of data columns currently active
-const colorPalette = ["#111111","#A71930","#5A5A5A","#1A5FB4","#2E7D32","#6A1B9A"];
+const colorPalette = ["#111111","#A71930","#5A5A5A","#1A5FB4","#2E7D32","#6A1B9A","#B26A00","#00796B"];
 
 function populateTeamSelect(){
   const sel = document.getElementById('teamSelect');
@@ -802,7 +808,7 @@ function setColColor(n, value){
 }
 
 function addColumn(){
-  if(colCount >= 6){ alert('Maximum of 6 columns supported.'); return; }
+  if(colCount >= 8){ alert('Maximum of 8 columns supported.'); return; }
   colCount += 1;
   const n = colCount;
   const color = colorPalette[n-1] || '#333333';
@@ -1781,8 +1787,8 @@ function escapeHtml(s){
 function toggleCsvRowSelection(idx){
   const checkbox = document.getElementById('csvRow_'+idx);
   if(checkbox.checked){
-    if(csvSelectedOrder.length >= 6){
-      alert('Maximum 6 columns supported. Uncheck a row before adding another.');
+    if(csvSelectedOrder.length >= 8){
+      alert('Maximum 8 columns supported. Uncheck a row before adding another.');
       checkbox.checked = false;
       return;
     }
@@ -1843,7 +1849,7 @@ function importCsvSelection(){
     }
   }
 
-  while(getActiveColumnCount() < numNeeded && getActiveColumnCount() < 6){
+  while(getActiveColumnCount() < numNeeded && getActiveColumnCount() < 8){
     addColumn();
   }
 
