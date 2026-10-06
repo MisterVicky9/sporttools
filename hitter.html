@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Position Player</title>
+<link rel="stylesheet" href="vickyplus.css">
+<link rel="stylesheet" href="theme.css">
+</head>
+<body>
+<div class="page-nav"><a href="hitters.html">← Leaderboards</a></div>
+<h2 class="pagetitle" id="pname">Player</h2>
+<div class="meta" id="pmeta"></div>
+
+<div class="card">
+  <div class="panel"><div class="row">
+    <label class="chk"><input type="checkbox" id="splitTeams" checked> Split Teams</label>
+    <button class="btn secondary" id="colsBtn" type="button">Columns</button>
+    <button class="btn" id="csvBtn" type="button">Download CSV</button>
+    <button class="btn" id="cardBtn" type="button">Build Stat Card</button>
+  </div></div>
+  <div id="pickerHost"></div>
+  <div class="status" id="status">Loading…</div>
+  <div id="chartHost"></div>
+  <div class="tablewrap"><table id="tbl"></table></div>
+</div>
+
+<script src="vickyplus-core.js"></script>
+<script src="vickyplus-ui.js"></script>
+<script>
+(function(){
+  var $=VPUI.$, CTX, RECS=[], mine=[], PK, cols=[], tableRows=[], last;
+  var id=new URLSearchParams(location.search).get('id');
+  var DEFAULTS=['G','PA','HR','R','RBI','SB','BB%','K%','AVG','OBP','SLG','wOBA','wRC+','Off','Def','WAR'];
+  var METRIC='wRC+';
+
+  function load(data){
+    var idx={}, meta={}; data.columns.forEach(function(c,i){ idx[c.name]=i; meta[c.name]=c; });
+    var idCol='PlayerId' in idx?'PlayerId':('MLBAMID' in idx?'MLBAMID':null);
+    CTX={columns:data.columns, meta:meta, idx:idx, idCol:idCol, feats:[]};
+    RECS=data.rows.map(function(raw){
+      var r={raw:raw, Name:raw[idx.Name], Season:raw[idx.Season], Team:'Team' in idx?raw[idx.Team]:'', PA:'PA' in idx?(raw[idx.PA]||0):0, id:String(idCol?raw[idx[idCol]]:raw[idx.Name])};
+      r.SeasonLabel=String(r.Season); return r;
+    });
+  }
+  function combine(group){
+    group=group.slice().sort(function(a,b){return a.Season-b.Season;});
+    var lastR=group[group.length-1], raw=[];
+    CTX.columns.forEach(function(c,i){
+      var vals=group.map(function(g){return {v:g.raw[i], w:g.PA};}).filter(function(x){return x.v!=null && x.v!=='';});
+      var out=null;
+      if(c.type==='text' || c.kind==='info' || !vals.length) out=lastR.raw[i];
+      else if(c.agg==='sum') out=vals.reduce(function(a,x){return a+x.v;},0);
+      else if(c.agg==='max') out=Math.max.apply(null,vals.map(function(x){return x.v;}));
+      else { var sw=0,s=0; vals.forEach(function(x){ sw+=x.w; s+=x.v*x.w; }); out=sw? s/sw : vals[vals.length-1].v; }
+      raw.push(out);
+    });
+    var teams={}; group.forEach(function(g){ teams[g.Team]=1; });
+    var from=group[0].Season, to=lastR.Season, multi=Object.keys(teams).length>1;
+    var r={raw:raw, Name:lastR.Name, Season:to, Team:multi?'- - -':lastR.Team, PA:group.reduce(function(a,g){return a+g.PA;},0), id:lastR.id, SeasonLabel:from===to?String(to):from+'–'+to};
+    if('Team' in CTX.idx) raw[CTX.idx.Team]=r.Team;
+    return r;
+  }
+  function val(r,name){ return name in CTX.idx ? r.raw[CTX.idx[name]] : null; }
+
+  function chart(pts){
+    if(pts.length<1){ $('chartHost').innerHTML=''; return; }
+    var W=640,H=220,L=40,R=16,T=16,B=30, ys=pts.map(function(p){return p.y;});
+    var lo=Math.min(60,Math.floor(Math.min.apply(null,ys)/20)*20), hi=Math.max(140,Math.ceil(Math.max.apply(null,ys)/20)*20);
+    var seasons=Array.from(new Set(RECS.map(function(r){return r.Season;}))).sort();
+    var x=function(s){ return L+(seasons.length>1?(s-seasons[0])/(seasons[seasons.length-1]-seasons[0]):0.5)*(W-L-R); };
+    var y=function(v){ return T+(1-(v-lo)/(hi-lo))*(H-T-B); };
+    var g='', tick;
+    for(tick=lo;tick<=hi;tick+=20) g+='<line x1="'+L+'" x2="'+(W-R)+'" y1="'+y(tick)+'" y2="'+y(tick)+'" stroke="'+(tick===100?'#C8202F':'#e4e4e4')+'" stroke-dasharray="'+(tick===100?'4 3':'0')+'"/><text x="'+(L-6)+'" y="'+(y(tick)+4)+'" text-anchor="end" font-size="11" fill="#888">'+tick+'</text>';
+    seasons.forEach(function(s){ g+='<text x="'+x(s)+'" y="'+(H-10)+'" text-anchor="middle" font-size="11" fill="#888">'+s+'</text>'; });
+    g+='<path d="'+pts.map(function(p,i){ return (i?'L':'M')+x(p.Season)+','+y(p.y); }).join(' ')+'" fill="none" stroke="#3A9098" stroke-width="2.5"/>';
+    pts.forEach(function(p){ g+='<circle cx="'+x(p.Season)+'" cy="'+y(p.y)+'" r="4" fill="#3A9098"/><text x="'+x(p.Season)+'" y="'+(y(p.y)-9)+'" text-anchor="middle" font-size="11" font-weight="700" fill="#222">'+Math.round(p.y)+'</text>'; });
+    $('chartHost').innerHTML='<svg class="chart" viewBox="0 0 '+W+' '+H+'" role="img" aria-label="'+METRIC+' by season">'+g+'</svg>';
+  }
+
+  function render(){
+    var split=$('splitTeams').checked, rows=[], bySeason={};
+    mine.forEach(function(r){ (bySeason[r.Season]=bySeason[r.Season]||[]).push(r); });
+    var totals=Object.keys(bySeason).map(Number).sort().map(function(s){
+      var g=bySeason[s]; if(g.length===1){ g[0]._k='total'; return g[0]; }
+      var t=combine(g); t._k='total'; t._stints=g; return t;
+    });
+    totals.forEach(function(t){
+      if(split && t._stints){ t._stints.slice().sort(function(a,b){return b.PA-a.PA;}).forEach(function(s){ s._k='stint'; rows.push(s); }); }
+      rows.push(t);
+    });
+    var career=combine(mine); career._k='total'; career._career=true; career.SeasonLabel='Career'; career.Team='';
+    if(totals.length>1) rows.push(career);
+    tableRows=rows;
+    cols=[
+      {k:'Name',label:'Season',txt:true,sortable:false,get:function(r){return r.SeasonLabel;}},
+      {k:'Team',label:'Team',txt:true,sortable:false,get:function(r){return r._career?'':r.Team;}}
+    ].concat(PK.cols('Team').map(function(c){ c.sortable=false; return c; }));
+    VPUI.drawTable({el:$('tbl'),cols:cols,rows:rows,rank:false,rowClass:function(r){return r._k==='stint'?'stint':'total';}});
+    chart(totals.map(function(t){ return {Season:t.Season, y:val(t,METRIC)}; }).filter(function(p){ return p.y!=null; }));
+    $('status').textContent='';
+  }
+
+  VP.fetchData('hitters-data.json').then(function(data){
+    load(data);
+    mine=RECS.filter(function(r){return r.id===String(id);});
+    if(!mine.length){ $('status').className='status err'; $('status').textContent='Player not found.'; return; }
+    if(!(METRIC in CTX.idx)) METRIC='WAR';
+    $('pickerHost').innerHTML=VPUI.PICKER_HTML;
+    PK=new VPUI.Picker(CTX,render,{key:'vp_cols_hit_v1', defaults:function(c){ return DEFAULTS.filter(function(n){ return n in c.meta; }); }});
+    var seasons=mine.map(function(r){return r.Season;}), lo=Math.min.apply(null,seasons), hi=Math.max.apply(null,seasons);
+    last=mine.filter(function(r){return r.Season===hi;}).sort(function(a,b){return b.PA-a.PA;})[0];
+    var career=combine(mine), cm=val(career,METRIC);
+    $('pname').textContent=mine[0].Name; document.title=mine[0].Name+' – Position Players';
+    $('pmeta').textContent=(last.Team?last.Team+' · ':'')+(lo===hi?lo:lo+'–'+hi)+' · '+Math.round(career.PA)+' PA in the data'+(cm!=null?' · career '+METRIC+' '+(METRIC==='WAR'?cm.toFixed(1):Math.round(cm)):'');
+    $('splitTeams').addEventListener('input',render);
+    $('csvBtn').addEventListener('click',function(){ VPUI.downloadCSV(cols,tableRows,'player_'+mine[0].Name.replace(/\W+/g,'_')+'.csv',false); });
+    $('cardBtn').addEventListener('click',function(){
+      var tot=tableRows.filter(function(r){return r._k==='total';}), car=tot.filter(function(r){return r._career;})[0];
+      var yrs=tot.filter(function(r){return !r._career;}).slice(-(car?5:6));
+      var cc=yrs.concat(car?[car]:[]).map(function(r){ return {label:r.SeasonLabel, row:r, team:VPUI.teamName(r._career?last.Team:r.Team)}; });
+      VPUI.launchCard(VPUI.buildCardState(cc, cols.filter(function(c){return c.k!=='Name';}), {title:mine[0].Name, team:VPUI.teamName(last.Team), subtitle:'Season'}));
+    });
+    render();
+  }).catch(function(e){ $('status').className='status err'; $('status').textContent=(location.protocol==='file:'?'Open this page from the website (or a local server). ':'')+e.message; });
+})();
+</script>
+</body>
+</html>

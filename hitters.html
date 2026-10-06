@@ -129,7 +129,9 @@
     });
   }
   function buildCols(o){
-    var c=[{k:'Name',label:mode==='team'?'Team':'Name',txt:true,get:function(r){return r.Name;}}];
+    var link=function(r,t){ return CTX.idCol && r.id ? '<a href="hitter.html?id='+encodeURIComponent(r.id)+'">'+esc(t)+'</a>' : esc(t); };
+    var c=[mode==='team' ? {k:'Name',label:'Team',txt:true,get:function(r){return r.Name;},html:function(r,t){ return '<a href="#" data-team="'+esc(r.Name)+'">'+esc(t)+'</a>'; }}
+                         : {k:'Name',label:'Name',txt:true,get:function(r){return r.Name;},html:link}];
     if(mode==='team') c.push({k:'players',label:'Players',get:function(r){return r.players;},fmt:function(v){return String(v);}});
     if(o.from!==o.to && o.splitSeasons) c.push({k:'Season',label:'Season',get:function(r){return r.Season;},fmt:function(v,r){return r.SeasonLabel;}});
     else if(o.from!==o.to) c.push({k:'Season',label:'Seasons',txt:true,get:function(r){return r.SeasonLabel;}});
@@ -189,6 +191,10 @@
     $('more').addEventListener('click',function(){ limit=1e9; render(); });
     $('csvBtn').addEventListener('click',function(){ VPUI.downloadCSV(cols,shownRows,'position_players_'+mode+'.csv',true); });
     $('cardBtn').addEventListener('click',buildCard);
+    $('tbl').addEventListener('click',function(e){
+      var t=e.target.getAttribute && e.target.getAttribute('data-team'); if(!t) return;
+      e.preventDefault(); $('team').value=t; setMode('player'); $('team').value=t; render();
+    });
     $('tbl').addEventListener('change',function(e){
       var i=e.target.getAttribute&&e.target.getAttribute('data-i'); if(i===null||i===undefined) return;
       var r=shownRows[parseInt(i)], k=selIdx(r);
