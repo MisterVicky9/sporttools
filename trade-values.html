@@ -49,6 +49,7 @@
   table.data-table th{ font-size:11px; text-align:left; color:#666; padding:4px 6px; border-bottom:2px solid #ddd; }
   table.data-table td{ padding:4px 6px; vertical-align:middle; }
   table.data-table input[type=text], table.data-table input[type=number]{ width:100%; padding:6px; border:1px solid #ccc; border-radius:5px; font-size:13px; }
+  .rolecol, .fv-desc{ display:none; } body.show-roles .rolecol{ display:table-cell; } body.show-roles .fv-desc{ display:block; font-size:11px; color:#666; margin-top:3px; }
   table.data-table select{ width:100%; padding:6px; border:1px solid #ccc; border-radius:5px; font-size:13px; }
   table.data-table .computed{ font-size:12px; color:#555; white-space:nowrap; font-weight:700; }
   .remove-row-btn{ background:none; border:none; color:#c0392b; font-size:16px; cursor:pointer; padding:0 4px; line-height:1; }
@@ -95,6 +96,7 @@
 <h2 class="pagetitle">Trade Value Calculator</h2>
 
 <label class="switch-row"><span class="switch"><input type="checkbox" id="uncOn" onchange="calc()"><span class="slider"></span></span> Apply default uncertainty (discount future salary &amp; WAR)</label>
+<label class="switch-row"><span class="switch"><input type="checkbox" id="rolesOn" onchange="document.body.classList.toggle('show-roles',this.checked);calc()"><span class="slider"></span></span> Show prospect role descriptions</label>
 <button type="button" class="toggle-btn" id="advSettingsBtn" onclick="toggleSection('advSettingsPanel', this)" style="display:block; margin-bottom:16px;">▸ Advanced Settings (market rate, uncertainty & prospect value table)</button>
 <div id="advSettingsPanel" style="display:none;">
 
@@ -128,7 +130,7 @@
   <div class="calc-card">
     <h3>Prospect FV Value Table</h3>
     <table class="data-table" id="fvTable">
-      <thead><tr><th>FV Grade</th><th>Est. WAR/szn</th><th>Batter $</th><th>Pitcher $</th></tr></thead>
+      <thead><tr><th>FV Grade</th><th>Est. WAR/szn</th><th>Batter $</th><th>Pitcher $</th><th class="rolecol">Batter role</th><th class="rolecol">Pitcher role</th></tr></thead>
       <tbody id="fvTableBody"></tbody>
     </table>
   </div>
@@ -214,14 +216,14 @@ function applyTeamTheme(side){
 // Prospect FV value table -- read directly from the user's trade workbook's
 // TIERS table (identical across every sheet: Skubal, Ryan, Miller, Langeliers).
 let FV_TIERS = [
-  {label:"60 FV",      war:3.5, batter:82000000, pitcher:70000000},
-  {label:"55 FV",      war:3.0, batter:55000000, pitcher:45000000},
-  {label:"50 FV",      war:2.5, batter:45000000, pitcher:33500000},
-  {label:"50/45+ FV",  war:2.0, batter:31750000, pitcher:24250000},
-  {label:"45+ FV",     war:1.5, batter:18500000, pitcher:15000000},
-  {label:"45 FV",      war:1.5, batter:14500000, pitcher:9500000},
-  {label:"40+ FV",     war:1.0, batter:8000000,  pitcher:7000000},
-  {label:"40 FV",      war:1.0, batter:5500000,  pitcher:4000000}
+  {label:"60 FV",      war:3.5, batter:82000000, pitcher:70000000, hit:"All Star", pit:"#3 starter"},
+  {label:"55 FV",      war:3.0, batter:55000000, pitcher:45000000, hit:"Above Avg Reg", pit:"#3/4 starter"},
+  {label:"50 FV",      war:2.5, batter:45000000, pitcher:33500000, hit:"Avg Everyday Player", pit:"#4 starter / Elite reliever"},
+  {label:"50/45+ FV",  war:2.0, batter:31750000, pitcher:24250000, hit:"Avg Everyday Player", pit:"#4 starter / Elite reliever"},
+  {label:"45+ FV",     war:1.5, batter:18500000, pitcher:15000000, hit:"Low End Reg/Platoon", pit:"#4/5 starter / Dominant bullpen piece"},
+  {label:"45 FV",      war:1.5, batter:14500000, pitcher:9500000, hit:"Low End Reg/Platoon", pit:"#4/5 starter / Dominant bullpen piece"},
+  {label:"40+ FV",     war:1.0, batter:8000000,  pitcher:7000000, hit:"Bench Player", pit:"Backend starter / Middle reliever"},
+  {label:"40 FV",      war:1.0, batter:5500000,  pitcher:4000000, hit:"Bench Player", pit:"Backend starter / Middle reliever"}
 ];
 
 function renderFvTable(){
@@ -232,6 +234,8 @@ function renderFvTable(){
       <td><input type="number" id="fv_war_${i}" value="${t.war}" step="0.1" onchange="syncFvTable()"></td>
       <td><input type="number" id="fv_batter_${i}" value="${t.batter}" step="50000" onchange="syncFvTable()"></td>
       <td><input type="number" id="fv_pitcher_${i}" value="${t.pitcher}" step="50000" onchange="syncFvTable()"></td>
+      <td class="rolecol"><input type="text" id="fv_hit_${i}" value="${t.hit}" onchange="syncFvTable()"></td>
+      <td class="rolecol"><input type="text" id="fv_pit_${i}" value="${t.pit}" onchange="syncFvTable()"></td>
     </tr>
   `).join('');
 }
@@ -241,6 +245,8 @@ function syncFvTable(){
     t.war = parseFloat(document.getElementById('fv_war_'+i).value) || 0;
     t.batter = parseFloat(document.getElementById('fv_batter_'+i).value) || 0;
     t.pitcher = parseFloat(document.getElementById('fv_pitcher_'+i).value) || 0;
+    t.hit = document.getElementById('fv_hit_'+i).value;
+    t.pit = document.getElementById('fv_pit_'+i).value;
   });
   refreshAllFvDropdowns();
   calc();
@@ -438,7 +444,7 @@ function prospectEntryHTML(teamKey, id, idx){
               <option value="pitcher">Pitcher</option>
             </select>
           </td>
-          <td><select id="fv_${id}" class="fv-select" onchange="calc()">${fvOptionsHTML()}</select></td>
+          <td><select id="fv_${id}" class="fv-select" onchange="calc()">${fvOptionsHTML()}</select><div id="fvdesc_${id}" class="fv-desc"></div></td>
           <td class="computed" id="entryValue_${id}">—</td>
         </tr>
       </tbody>
@@ -483,6 +489,7 @@ function addEntry(teamKey, type){
     addYear(id);
   }
   updateEntryCount(teamKey);
+  calc();
 }
 
 function removeEntry(teamKey, id){
@@ -653,6 +660,8 @@ function computeProspectEntry(entryId){
   const pos = posEl.value;
   const tier = FV_TIERS[parseInt(fvEl.value,10)] || FV_TIERS[0];
   const value = pos === 'pitcher' ? tier.pitcher : tier.batter;
+  const dEl = document.getElementById('fvdesc_'+entryId);
+  if(dEl) dEl.textContent = pos === 'pitcher' ? tier.pit : tier.hit;
   return { pos, tierLabel: tier.label, value };
 }
 
