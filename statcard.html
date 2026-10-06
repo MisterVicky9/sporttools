@@ -156,7 +156,7 @@
   thead td.col-c6{ background:var(--col6-bg,#0f0f0f); color:var(--col6-fg,#fff); border-bottom:6px solid var(--col6-accent,#0f0f0f); }
 
   .col-controls{
-    display:flex; align-items:center; justify-content:center; gap:8px; margin-top:6px;
+    display:flex; align-items:center; justify-content:center; gap:8px; margin-top:6px; flex-wrap:wrap;
   }
   .col-swatch{
     width:22px; height:22px; border:none; padding:0; cursor:pointer; border-radius:4px;
@@ -208,7 +208,7 @@
   }
   .crop-actions .apply{ background:#2E7D32; color:#fff; }
   .crop-actions .cancel{ background:#888; color:#fff; }
-  .col-team{ font-size:10px; max-width:96px; margin-bottom:3px; }
+  .col-team{ font-size:10px; width:100%; max-width:120px; }
   .crop-hint{ font-size:12px; color:#888; margin-top:8px; }
 
   .col-thumb{
@@ -763,7 +763,7 @@ function setColTheme(n, teamName){
   const dist = (a,b)=>{ const x=parseInt(a.slice(1),16), y=parseInt(b.slice(1),16); return Math.abs((x>>16)-(y>>16))+Math.abs(((x>>8)&255)-((y>>8)&255))+Math.abs((x&255)-(y&255)); };
   const bg = t.primary;
   let accent = t.accent;
-  if(dist(bg, accent) < 90) accent = lum(bg) > 0.5 ? '#111111' : '#FFFFFF';
+  if(dist(bg, accent) < 90) accent = (t.light && dist(bg, t.light) >= 90) ? t.light : (lum(bg) > 0.5 ? '#111111' : '#9AA3AD');
   root.setProperty('--col'+n+'-bg', bg);
   root.setProperty('--col'+n+'-fg', lum(bg) > 0.6 ? '#111111' : '#FFFFFF');
   root.setProperty('--col'+n+'-accent', accent);
@@ -1344,24 +1344,33 @@ function exportPNG(){
   const noExportEls = document.querySelectorAll('.no-export');
   noExportEls.forEach(el=> el.style.visibility = 'hidden');
   const ctrlCols = document.querySelectorAll('.row-ctrl-col');
-  ctrlCols.forEach(el=> el.style.visibility = 'hidden');
+  ctrlCols.forEach(el=> el.style.display = 'none');   // remove the blank controls column so the table fills the card
 
   const card = document.getElementById('card');
   const prevTransform = card.style.transform;
   card.style.transform = 'none'; // always export at full native resolution
+  // If the content is wider than the card (many columns / long names), export the whole thing, not just the visible window.
+  const prevWidth = card.style.width;
+  if(card.scrollWidth > card.clientWidth) card.style.width = (card.scrollWidth + 8) + 'px';
+  // Keep the rounded corners; the area outside them stays transparent (no white background, no shadow).
+  const prevShadow = card.style.boxShadow;
+  card.style.boxShadow = 'none';
+  const restoreLook = ()=>{ card.style.boxShadow = prevShadow; card.style.width = prevWidth; };
 
-  html2canvas(card, {scale:2, backgroundColor:'#ffffff'}).then(canvas=>{
+  html2canvas(card, {scale:2, backgroundColor:null}).then(canvas=>{
+    restoreLook();
     card.style.transform = prevTransform;
     noExportEls.forEach(el=> el.style.visibility = 'visible');
-    ctrlCols.forEach(el=> el.style.visibility = 'visible');
+    ctrlCols.forEach(el=> el.style.display = '');
     const link = document.createElement('a');
     link.download = 'player-stat-card.png';
     link.href = canvas.toDataURL('image/png');
     link.click();
   }).catch(err=>{
+    restoreLook();
     card.style.transform = prevTransform;
     noExportEls.forEach(el=> el.style.visibility = 'visible');
-    ctrlCols.forEach(el=> el.style.visibility = 'visible');
+    ctrlCols.forEach(el=> el.style.display = '');
     alert('Export failed: ' + err);
   });
 }
@@ -1373,6 +1382,11 @@ const controlsEl = document.querySelector('.controls');
 const CARD_NATIVE_WIDTH = 920;
 
 function updateCardScale(){
+  // Natural width: 920px, or wider if the content (many columns / long names) needs it.
+  cardEl.style.width = CARD_NATIVE_WIDTH + 'px';
+  const nativeW = Math.max(CARD_NATIVE_WIDTH, cardEl.scrollWidth + 8);
+  cardEl.style.width = nativeW + 'px';
+
   const isStacked = window.innerWidth < (CARD_NATIVE_WIDTH + 340 + 28 + 48);
   const bodyPad = window.innerWidth < 600 ? 24 : 48;
   let available;
@@ -1382,13 +1396,19 @@ function updateCardScale(){
     available = window.innerWidth - bodyPad - 20 - controlsEl.offsetWidth - 28;
   }
   available = Math.max(available, 240);
-  const scale = Math.min(1, available / CARD_NATIVE_WIDTH);
+  // Shrink to fit, but never below a readable/clickable size -- past that, the card scrolls sideways.
+  const MIN_SCALE = 0.62;
+  const scale = Math.min(1, Math.max(available / nativeW, MIN_SCALE));
 
   cardEl.style.transform = 'scale(' + scale + ')';
 
   const naturalHeight = cardEl.offsetHeight; // offsetHeight ignores CSS transform
-  cardWrapperEl.style.width = (CARD_NATIVE_WIDTH * scale + 20) + 'px';
-  cardWrapperEl.style.height = (naturalHeight * scale + 20) + 'px';
+  // Shrink the card's layout footprint to its scaled size so the scroll range matches what is visible.
+  cardEl.style.marginRight = (-(nativeW * (1 - scale))) + 'px';
+  cardEl.style.marginBottom = (-(naturalHeight * (1 - scale))) + 'px';
+  cardWrapperEl.style.width = Math.min(nativeW * scale, available) + 20 + 'px';
+  cardWrapperEl.style.height = (naturalHeight * scale + 20 + (nativeW * scale > available ? 14 : 0)) + 'px';
+  cardWrapperEl.style.overflowX = nativeW * scale > available ? 'auto' : 'hidden';
 }
 
 let scaleRAF = false;
