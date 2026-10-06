@@ -3,18 +3,24 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Hitter Leaderboards</title>
+<title>Position Player Leaderboards</title>
 <link rel="stylesheet" href="vickyplus.css">
 <link rel="stylesheet" href="theme.css">
 </head>
 <body>
 <div class="page-nav"><a href="index.html">← Home</a></div>
-<h2 class="pagetitle">Hitter Leaderboards</h2>
+<h2 class="pagetitle">Position Player Leaderboards</h2>
 
 <div class="card">
+  <div class="seg" id="modes">
+    <button class="on" data-mode="player">Player Stats</button>
+    <button data-mode="team">Team Stats</button>
+  </div>
+
   <div class="panel">
     <div class="row">
       <label class="l" for="team">Team:</label><select id="team"></select>
+      <label class="chk" id="splitTeamsBox"><input type="checkbox" id="splitTeams" checked> Split Teams</label>
       <span id="posBox" class="hidden"><label class="l" for="pos">Primary Position:</label> <select id="pos"></select></span>
     </div>
     <div class="row">
@@ -23,7 +29,7 @@
       <label class="chk" id="splitSeasonsBox"><input type="checkbox" id="splitSeasons" checked> Split Seasons</label>
     </div>
     <div class="row">
-      <label class="l" for="minPA">PA (min to max):</label><input type="number" id="minPA" value="100" min="0" step="25" aria-label="Minimum PA"> to <input type="number" id="maxPA" min="0" step="25" placeholder="no max" aria-label="Maximum PA">
+      <label class="l" for="minPA" id="paLabel">PA (min to max):</label><input type="number" id="minPA" value="100" min="0" step="25" aria-label="Minimum PA"> to <input type="number" id="maxPA" min="0" step="25" placeholder="no max" aria-label="Maximum PA">
       <input type="search" id="q" placeholder="Search name or team">
       <div class="viewing" id="viewing"></div>
     </div>
@@ -41,7 +47,7 @@
 <script>
 (function(){
   var $=VPUI.$, esc=VPUI.esc;
-  var CTX, RECS=[], PK, sel=[], sortKey='', sortDir='desc', limit=250, shownRows=[], cols=[];
+  var CTX, RECS=[], PK, mode='player', sel=[], sortKey='', sortDir='desc', limit=250, shownRows=[], cols=[];
   var POS_ORDER=['C','1B','2B','3B','SS','LF','CF','RF','OF','DH'];
   var DEFAULTS=['Team','Pos','G','PA','HR','R','RBI','SB','BB%','K%','AVG','OBP','SLG','wOBA','wRC+','Off','Def','WAR'];
 
@@ -54,12 +60,12 @@
     RECS=data.rows.map(function(raw){
       var r={raw:raw, Name:raw[idx.Name], Season:raw[idx.Season], Team:'Team' in idx?raw[idx.Team]:'', PA:'PA' in idx?(raw[idx.PA]||0):0,
              id: idCol? raw[idx[idCol]] : raw[idx.Name], Pos: 'Pos' in idx ? raw[idx.Pos] : ''};
-      r.SeasonLabel=String(r.Season); return r;
+      r.SeasonLabel=String(r.Season); r.teams={}; r.teams[r.Team]=1; return r;
     });
   }
 
   // combine several seasons of one player into one row: sums, PA-weighted means, maxes; info from the latest season
-  function combine(group){
+  function combine(group, teamName){
     group=group.slice().sort(function(a,b){return a.Season-b.Season;});
     var last=group[group.length-1], raw=[];
     CTX.columns.forEach(function(c,i){
@@ -71,55 +77,79 @@
       else { var sw=0,s=0; vals.forEach(function(x){ sw+=x.w; s+=x.v*x.w; }); out=sw? s/sw : vals[vals.length-1].v; }
       raw.push(out);
     });
-    var teams={}; group.forEach(function(g){ teams[g.Team]=1; });
+    var teams={}; group.forEach(function(g){ for(var t in g.teams) teams[t]=1; });
     var pas=group.reduce(function(a,g){return a+g.PA;},0);
     var from=group[0].Season, to=last.Season;
-    var r={raw:raw, Name:last.Name, Season:to, Team:Object.keys(teams).length>1?'- - -':last.Team, PA:pas, id:last.id, Pos:last.Pos,
+    var r={raw:raw, Name:teamName||last.Name, Season:to, Team:teamName||(Object.keys(teams).length>1?'- - -':last.Team), PA:pas, id:teamName||last.id, Pos:last.Pos,
            SeasonLabel: from===to? String(to) : from+'–'+to};
+    r.teams=teams; if('Team' in CTX.idx) raw[CTX.idx.Team]=r.Team;
+    if(teamName){ r.players=Object.keys(group.reduce(function(m,g){ m[g.id]=1; return m; },{})).length;
+      if('Team' in CTX.idx) raw[CTX.idx.Team]=teamName; if('Name' in CTX.idx) raw[CTX.idx.Name]=teamName; }
     return r;
   }
 
+  function setMode(m){
+    mode=m; limit=250; sel=[]; sortKey='';
+    document.querySelectorAll('#modes button').forEach(function(b){ b.classList.toggle('on', b.getAttribute('data-mode')===m); });
+    $('splitTeamsBox').classList.toggle('off', m==='team');
+    $('minPA').value = m==='team'?0:100; $('maxPA').value='';
+    $('paLabel').textContent = m==='team' ? 'Player PA (min to max):' : 'PA (min to max):';
+    render();
+  }
   function opts(){
     var single=$('single').value, from=parseInt($('from').value), to=parseInt($('to').value);
     if(single){ from=to=parseInt(single); } else if(from>to){ var t=from; from=to; to=t; }
-    return {from:from,to:to,team:$('team').value,pos:$('pos').value,splitSeasons:$('splitSeasons').checked,
+    return {from:from,to:to,team:$('team').value,pos:$('pos').value,splitSeasons:$('splitSeasons').checked, splitTeams:$('splitTeams').checked,
             minPA:parseFloat($('minPA').value)||0, maxPA:($('maxPA').value===''?null:parseFloat($('maxPA').value)), q:$('q').value.trim().toLowerCase()};
   }
   function rowsFor(o){
     var base=RECS.filter(function(r){ return r.Season>=o.from && r.Season<=o.to; });
     var list;
-    if(o.splitSeasons || o.from===o.to) list=base;
-    else { var m={}; base.forEach(function(r){ (m[r.id]=m[r.id]||[]).push(r); }); list=Object.keys(m).map(function(k){ return m[k].length>1? combine(m[k]) : m[k][0]; }); }
+    if(mode==='team'){
+      var skipped=0, g={};
+      base.forEach(function(r){
+        if(r.Team==='- - -'){ skipped++; return; }
+        if(r.PA<o.minPA || (o.maxPA!=null && r.PA>o.maxPA)) return;
+        var k=r.Team+(o.splitSeasons?'|'+r.Season:''); (g[k]=g[k]||[]).push(r);
+      });
+      rowsFor.skipped=skipped;
+      list=Object.keys(g).map(function(k){ return combine(g[k], g[k][0].Team); });
+      return list.filter(function(r){ return (o.team==='all'||r.Team===o.team) && (!o.q || r.Name.toLowerCase().indexOf(o.q)>=0); });
+    }
+    var ss=o.splitSeasons || o.from===o.to, g2={};
+    base.forEach(function(r){ var k=r.id+(ss?'|'+r.Season:'')+(o.splitTeams?'|'+r.Team:''); (g2[k]=g2[k]||[]).push(r); });
+    list=Object.keys(g2).map(function(k){ return g2[k].length>1? combine(g2[k]) : g2[k][0]; });
     return list.filter(function(r){
       if(r.PA<o.minPA) return false;
       if(o.maxPA!=null && r.PA>o.maxPA) return false;
-      if(o.team!=='all' && r.Team!==o.team) return false;
+      if(o.team!=='all' && !r.teams[o.team]) return false;
       if(o.pos!=='all' && primary(r.Pos)!==o.pos) return false;
       if(o.q && (r.Name+' '+r.Team).toLowerCase().indexOf(o.q)<0) return false;
       return true;
     });
   }
   function buildCols(o){
-    var c=[{k:'Name',label:'Name',txt:true,get:function(r){return r.Name;}}];
+    var c=[{k:'Name',label:mode==='team'?'Team':'Name',txt:true,get:function(r){return r.Name;}}];
+    if(mode==='team') c.push({k:'players',label:'Players',get:function(r){return r.players;},fmt:function(v){return String(v);}});
     if(o.from!==o.to && o.splitSeasons) c.push({k:'Season',label:'Season',get:function(r){return r.Season;},fmt:function(v,r){return r.SeasonLabel;}});
     else if(o.from!==o.to) c.push({k:'Season',label:'Seasons',txt:true,get:function(r){return r.SeasonLabel;}});
-    return c.concat(PK.cols());
+    return c.concat(PK.cols(mode==='team'?'Team':null));
   }
   function updCard(){
     $('cardBtn').textContent='Build Stat Card ('+sel.length+'/6)'; $('cardBtn').disabled=!sel.length;
     document.querySelectorAll('#tbl td.sel input').forEach(function(b){ b.disabled=!b.checked && sel.length>=6; });
   }
   function buildCard(){
-    var stat=cols.filter(function(c){ return c.k!=='Name' && c.k!=='Season'; });
+    var stat=cols.filter(function(c){ return c.k!=='Name' && c.k!=='Season' && c.k!=='players'; });
     var multiSeason=sel.some(function(r){ return r.SeasonLabel!==sel[0].SeasonLabel; });
     var names={}; sel.forEach(function(r){ names[r.Name]=1; });
     var same=Object.keys(names).length===1, n=sel.length;
     var lab=function(r){
-      var nm=r.Name; if(n>3){ var p=nm.split(' '); nm=p.length>1? p[0].charAt(0)+'. '+p.slice(1).join(' ') : nm; }
+      var nm=r.Name; if(mode!=='team' && n>3){ var p=nm.split(' '); nm=p.length>1? p[0].charAt(0)+'. '+p.slice(1).join(' ') : nm; }
       return same ? r.SeasonLabel : nm+(multiSeason? ' '+r.SeasonLabel : '');
     };
     VPUI.launchCard(VPUI.buildCardState(sel.map(function(r){ return {label:lab(r), row:r}; }), stat,
-      {title: same||n===1 ? sel[0].Name : 'Hitter Comparison', team:VPUI.teamName(sel[0].Team), subtitle: same||multiSeason ? 'Season' : 'Hitter'}));
+      {title: mode==='team' ? (n===1 ? sel[0].Name+' Offense' : 'Team Offense Comparison') : same||n===1 ? sel[0].Name : 'Position Player Comparison', team:VPUI.teamName(sel[0].Team), subtitle: same||multiSeason ? 'Season' : (mode==='team'?'Team':'Player')}));
   }
   function render(){
     if(!CTX) return;
@@ -132,7 +162,7 @@
       onSort:function(k){ var c=cols.filter(function(x){return x.k===k;})[0];
         if(sortKey===k) sortDir=sortDir==='asc'?'desc':'asc'; else { sortKey=k; sortDir=c.txt?'asc':'desc'; } render(); }});
     $('status').className='status';
-    $('status').textContent=list.length+' '+(o.splitSeasons&&o.from!==o.to?'hitter-seasons':'hitters')+(list.length>top.length?' (showing top '+top.length+')':'');
+    $('status').textContent=list.length+' '+(mode==='team'?'teams':(o.splitSeasons&&o.from!==o.to?'player-seasons':'players'))+(list.length>top.length?' (showing top '+top.length+')':'')+(mode==='team'&&rowsFor.skipped?' · excludes '+rowsFor.skipped+' multi-team player-seasons':'');
     $('more').classList.toggle('hidden', list.length<=top.length);
     $('viewing').textContent='Currently viewing seasons between '+o.from+' and '+o.to;
     updCard();
@@ -151,11 +181,12 @@
     $('posBox').classList.toggle('hidden', !('Pos' in CTX.idx));
     $('single').innerHTML='<option value="">Select</option>'+opt(ys); $('single').value=String(ys[0]);
     $('from').innerHTML=opt(seasons); $('to').innerHTML=opt(ys); $('from').value=String(seasons[0]); $('to').value=String(ys[0]);
-    ['team','pos','splitSeasons','single','from','to','minPA','maxPA','q'].forEach(function(id){
+    ['team','pos','splitSeasons','splitTeams','single','from','to','minPA','maxPA','q'].forEach(function(id){
       $(id).addEventListener('input',function(){ if(id==='from'||id==='to') $('single').value=''; limit=250; sel=[]; render(); });
     });
+    document.querySelectorAll('#modes button').forEach(function(b){ b.addEventListener('click',function(){ setMode(b.getAttribute('data-mode')); }); });
     $('more').addEventListener('click',function(){ limit=1e9; render(); });
-    $('csvBtn').addEventListener('click',function(){ VPUI.downloadCSV(cols,shownRows,'hitters.csv',true); });
+    $('csvBtn').addEventListener('click',function(){ VPUI.downloadCSV(cols,shownRows,'position_players_'+mode+'.csv',true); });
     $('cardBtn').addEventListener('click',buildCard);
     $('tbl').addEventListener('change',function(e){
       var i=e.target.getAttribute&&e.target.getAttribute('data-i'); if(i===null||i===undefined) return;
