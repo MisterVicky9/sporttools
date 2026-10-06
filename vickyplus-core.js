@@ -1,4 +1,4 @@
-// Vicky+ core: data loading, Vicky+ scoring, grouping/aggregation, projections. No DOM access.
+// Vicky+ core: data loading, Vicky+ scoring, grouping/aggregation. No DOM access.
 var VP = (function(){
   var FEATS = [
     {key:'K-BB%',      sign: 1, w:0.1000},
@@ -61,7 +61,7 @@ var VP = (function(){
   // ---------- aggregation ----------
   // Merge several rows of the same kind (stints, seasons, a whole team) into one row.
   function aggregate(group, ctx){
-    var n=group.length; if(n===1){ var g=group[0]; return {raw:g.raw, Season:g.Season, SeasonLabel:g.SeasonLabel, Name:g.Name, Team:g.Team, IP:g.IP, IPt:g.IPt, n:1, id:g.id, role:g.role, f:g.f, V:g.V, Cz:g.Cz, rows:group}; }
+    var n=group.length; if(n===1){ var g=group[0]; return {raw:g.raw, Season:g.Season, SeasonLabel:g.SeasonLabel, Name:g.Name, Team:g.Team, IP:g.IP, IPt:g.IPt, n:1, id:g.id, role:g.role, f:g.f, V:g.V, VE:g.VE, Cz:g.Cz, rows:group}; }
     var cols=ctx.columns, out=new Array(cols.length), W=0, i, j;
     group.forEach(function(r){ W+=r.IPt; });
     for(i=0;i<cols.length;i++){
@@ -81,8 +81,9 @@ var VP = (function(){
     r.Team = Object.keys(teams).length>1 ? '- - -' : group[0].Team;
     r.role=roleOf(ctx,out,W);
     FEATS.forEach(function(f){ r.f[f.key]=(f.key in ctx.idx)? out[ctx.idx[f.key]] : null; });
-    var vs=0, vw=0, zs=0; group.forEach(function(g){ if(g.V!==undefined){ vs+=g.V*g.IPt; zs+=g.Cz*g.IPt; vw+=g.IPt; } });
+    var vs=0, vw=0, zs=0, es=0, ew=0; group.forEach(function(g){ if(g.V!==undefined){ vs+=g.V*g.IPt; zs+=g.Cz*g.IPt; vw+=g.IPt; } if(g.VE!=null){ es+=g.VE*g.IPt; ew+=g.IPt; } });
     if(vw>0){ r.V=vs/vw; r.Cz=zs/vw; }
+    if(ew>0) r.VE=es/ew;
     return r;
   }
   function groupBy(recs,keyFn){
@@ -98,19 +99,24 @@ var VP = (function(){
     var totals=groupBy(ctx.recs,function(r){ return r.Season+'|'+r.id; }).map(function(g){ return aggregate(g,ctx); });
     var seasons=[], seen={}; totals.forEach(function(t){ if(!seen[t.Season]){ seen[t.Season]=1; seasons.push(t.Season); } });
     seasons.sort(function(a,b){return a-b;});
-    var lg={}, teams={};
+    var lg={}, lgE={}, teams={};
     ctx.recs.forEach(function(r){ if(r.Team) teams[r.Team]=1; });
     seasons.forEach(function(s){
       var T=totals.filter(function(t){ return t.Season===s; }), S=ctx.recs.filter(function(r){ return r.Season===s; });
-      // league baseline for projections: runs/9 if R exists, otherwise IP-weighted ERA
+      // league baseline: runs/9 if R exists, otherwise IP-weighted ERA
       var num=0, den=0;
       S.forEach(function(r){
         var x = ctx.hasR? r.raw[ctx.idx['R']] : (ctx.hasERA? r.raw[ctx.idx['ERA']] : null);
         if(x===null||x===undefined) return;
         if(ctx.hasR){ num+=x; den+=r.IPt; } else { num+=x*r.IPt; den+=r.IPt; }
       });
-      lg[s]= den>0? (ctx.hasR? 9*num/den : num/den) : null;
       var refT=T.filter(function(t){ return t.IPt>=REF_IP; }); if(refT.length<10) refT=T;
+      // ERA scale for Vicky+ ERA: IP-weighted mean ERA and the season's ERA standard deviation (mean IP-weighted like the 100 centre of Vicky+; sd over the same reference pitchers as the z-scores)
+      var eraOf=function(t){ var x=ctx.hasERA? t.raw[ctx.idx['ERA']] : null; return (x===null||x===undefined)? null : x; };
+      var en=0, ed=0; T.forEach(function(t){ var x=eraOf(t); if(x!==null){ en+=x*t.IPt; ed+=t.IPt; } });
+      var rE=refT.map(eraOf).filter(function(x){ return x!==null; });
+      lgE[s]= (ed>0 && rE.length>1)? {m:en/ed, s:sd(rE)} : null;
+      lg[s]= den>0? (ctx.hasR? 9*num/den : num/den) : null;
       var zs={};
       feats.forEach(function(f){
         var vals=[]; refT.forEach(function(t){ var v=t.f[f.key]; if(v!==null&&v!==undefined) vals.push(v*f.sign); });
@@ -120,7 +126,7 @@ var VP = (function(){
       var cv=refT.map(comp), cm=mean(cv), cs=sd(cv)||1;
       // 100 = IP-weighted league average (like wRC+ / FIP-): centre on the innings-weighted mean of every pitcher's season total
       var mw=0, ww=0; T.forEach(function(t){ mw+=((comp(t)-cm)/cs)*t.IPt; ww+=t.IPt; }); var mu=ww>0? mw/ww : 0;
-      var setV=function(r){ r.Cz=(comp(r)-cm)/cs-mu; r.V=100+20*r.Cz; };
+            var setV=function(r){ r.Cz=(comp(r)-cm)/cs-mu; r.V=100+20*r.Cz; r.VE=(lgE[s]&&lgE[s].s)? lgE[s].m-lgE[s].s*r.Cz : null; };
       T.forEach(setV);
       S.forEach(setV);
     });
@@ -154,19 +160,6 @@ var VP = (function(){
     });
   }
 
-  // ---------- projection ----------
-  function project(sc){
-    var ctx=sc.ctx, s=sc.seasons[sc.seasons.length-1], c=ctx.full?CONSTS.full:CONSTS.lite, base=sc.lg[s];
-    var b = ctx.hasR? c.b : c.bERA, out=[];
-    sc.totals.forEach(function(t){
-      if(t.Season!==s) return;
-      var rel=t.IPt/(t.IPt+c.K), x=t.Cz*rel;
-      var p=Object.create(t); p.rel=rel; p.PV=100+20*c.rho*x; p.PT=(base===null?null:base-b*x);
-      out.push(p);
-    });
-    return {season:s, rows:out, base:base, target:ctx.hasR?'RA9':'ERA'};
-  }
-
   // ---------- formatting / columns ----------
   function fmtFor(m){
     switch(m.fmt){
@@ -186,7 +179,7 @@ var VP = (function(){
   function fetchData(url){
     return fetch(url).then(function(r){ if(!r.ok) throw new Error('Could not load '+url+' ('+r.status+').'); return r.json(); });
   }
-  return {FEATS:FEATS, CONSTS:CONSTS, load:load, score:score, view:view, project:project, aggregate:aggregate,
+  return {FEATS:FEATS, CONSTS:CONSTS, load:load, score:score, view:view, aggregate:aggregate,
           groupBy:groupBy, fmtFor:fmtFor, defaultCols:defaultCols, fetchData:fetchData};
 })();
 if(typeof module!=='undefined') module.exports=VP;

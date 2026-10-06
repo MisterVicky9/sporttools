@@ -6,6 +6,7 @@
 <title>Vicky+ Player</title>
 <link rel="stylesheet" href="vickyplus.css">
 <link rel="stylesheet" href="theme.css">
+<script src="site.js"></script>
 </head>
 <body>
 <div class="page-nav"><a href="vickyplus.html">← Leaderboards</a></div>
@@ -61,13 +62,12 @@
     cols=[
       {k:'Season',label:'Season',txt:true,sortable:false,get:function(r){return r.SeasonLabel;}},
       {k:'Team',label:'Team',txt:true,sortable:false,get:function(r){return r._career?'':r.Team;}},
-      {k:'V',label:'Vicky+',bold:true,sortable:false,get:function(r){return r.V;},fmt:function(v){return v==null?'':String(Math.round(v));}}
+      {k:'V',label:'Vicky+',bold:true,sortable:false,get:function(r){return r.V;},fmt:function(v){return v==null?'':String(Math.round(v));}},
+      {k:'VE',label:'Vicky+ ERA',bold:true,sortable:false,get:function(r){return r.VE;},fmt:function(v){return v==null?'':v.toFixed(2);}}
     ].concat(PK.cols('Team').map(function(c){ c.sortable=false; return c; }));
     cols[0].k='Name';  // sticky first column
     VPUI.drawTable({el:$('tbl'),cols:cols,rows:rows,rank:false,rowClass:function(r){return r._k==='stint'?'stint':'total';}});
     chart(totals);
-    var latest=SC.seasons[SC.seasons.length-1], P=VP.project(SC).rows.filter(function(r){return r.id===id;})[0];
-    $('foot').textContent=(P?'Projection for '+(latest+1)+': Vicky+ '+Math.round(P.PV)+', '+VP.project(SC).target+' '+(P.PT==null?'n/a':P.PT.toFixed(2))+' (reliability '+Math.round(P.rel*100)+'%).':'');
     $('status').textContent='';
   }
 

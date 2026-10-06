@@ -262,6 +262,15 @@
   .pctl-rawstat:focus{ background:rgba(0,0,0,0.06); }
 </style>
 <link rel="stylesheet" href="theme.css">
+<style>
+  .embedmode body::before, .embedmode .controls, .embedmode .pagetitle, .embedmode .page-nav, .embedmode .no-export, .embedmode .col-remove{ display:none !important; }
+  .embedmode body{ background:transparent; padding:0; margin:0; }
+  .embedmode .layout{ display:block; margin:0; padding:0; }
+  .embedmode .card-wrapper{ background:transparent; padding:0; }
+  .embedmode [contenteditable], .embedmode .photo-frame, .embedmode select{ pointer-events:none; }
+</style>
+<script>var EMBED=/[?&]embed=1/.test(location.search); if(EMBED) document.documentElement.classList.add('embedmode');</script>
+<script src="site.js"></script>
 </head>
 <body>
 
@@ -1641,6 +1650,7 @@ function scheduleAutosave(){
 }
 
 function doAutosave(){
+  if(EMBED) return;
   try{
     const state = serializeCard();
     localStorage.setItem(AUTOSAVE_KEY, JSON.stringify(state));
@@ -1883,7 +1893,7 @@ document.querySelectorAll('#headerRow td[class^="col-c"]').forEach(td=>{
 });
 loadDefaultRows();
 populateRowSelect();
-loadAutosave();
+if(!EMBED) loadAutosave();
 
 // Card sent from the Vicky+ leaderboards / player pages (statcard.html#vp=...).
 // The previous autosave is kept under a _backup key before being replaced.
@@ -1899,6 +1909,18 @@ loadAutosave();
     scheduleAutosave();
   } catch(err){ console.warn('Could not read card from link.', err); }
   history.replaceState(null, '', location.pathname + location.search);
+})();
+// Embedded in a blog post: statcard.html?embed=1&src=<path to card .json>
+(function loadEmbed(){
+  if(!EMBED) return;
+  const m = /[?&]src=([^&]+)/.exec(location.search); if(!m) return;
+  const report = ()=>{ try{ parent.postMessage({sstCardHeight: document.getElementById('card').getBoundingClientRect().height + 2, src: decodeURIComponent(m[1])}, '*'); }catch(e){} };
+  fetch(decodeURIComponent(m[1])).then(r=>r.json()).then(state=>{
+    (state.columns||[]).forEach(c=>{ if(c.team) c.fromTeam = true; });
+    restoreCard(state); scheduleScaleUpdate();
+    setTimeout(()=>{ scheduleScaleUpdate(); report(); }, 400);
+    window.addEventListener('resize', ()=>setTimeout(report, 100));
+  }).catch(()=>{});
 })();
 scheduleScaleUpdate();
 </script>
