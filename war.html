@@ -118,7 +118,7 @@
 (function(){
   var $=function(i){return document.getElementById(i)}, esc=function(s){return String(s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})};
   var COMP=[['Bat','Batting Runs'],['BsR','Base Running'],['Fld','Fielding'],['Pos Adj','Positional Adjustment'],['Lg Adj','League Adjustment'],['Rep','Replacement']];
-  var GUTS={}, GYEARS=[], IDX={}, ROWS=[], REC=null, ORIG=null, ADJ0=0, byKey={};
+  var PD={}, GUTS={}, GYEARS=[], IDX={}, ROWS=[], REC=null, ORIG=null, ADJ0=0, byKey={};
   var GFIELDS=['wOBA','wOBAScale','wBB','wHBP','w1B','w2B','w3B','wHR','runSB','runCS','RPA','RW','Games','lgPA'];
   var GCSV={wOBA:'wOBA',wOBAScale:'wOBAScale',wBB:'wBB',wHBP:'wHBP',w1B:'w1B',w2B:'w2B',w3B:'w3B',wHR:'wHR',runSB:'runSB',runCS:'runCS',RPA:'R/PA',RW:'R/W',Games:'Games',lgPA:'lgPA'};
   var POS=[['C',12.5],['1B',-12.5],['2B',2.5],['3B',2.5],['SS',7.5],['LF',-7.5],['CF',2.5],['RF',-7.5],['DH',-17.5]];
@@ -211,7 +211,10 @@
       var c=g.c; ORIG=c.WAR;
       $('woba').value=(c.PA?c.wsum/c.PA:0).toFixed(6); $('pa').value=Math.round(c.PA); $('rep_pa').value=Math.round(c.PA);
       POS.forEach(function(p,i){ $('pg_'+i).value=''; });
-      if(c.G>0){ var imp=c['Pos Adj']/(c.G/162), bi=0; POS.forEach(function(p,i){ if(Math.abs(p[1]-imp)<Math.abs(POS[bi][1]-imp)) bi=i; }); $('pg_'+bi).value=Math.round(c.G); }
+      var pd=PD[g.id+'|'+g.Season];
+      if(pd){ var a0=0; POS.forEach(function(p,i){ var v=pd[p[0]]||0; if(v) $('pg_'+i).value=v; a0+=v/162*p[1]; });
+        var dh=Math.max(0,Math.round((a0-c['Pos Adj'])*162/17.5)); if(dh) $('pg_8').value=dh; }
+      else if(c.G>0){ var imp=c['Pos Adj']/(c.G/162), bi=0; POS.forEach(function(p,i){ if(Math.abs(p[1]-imp)<Math.abs(POS[bi][1]-imp)) bi=i; }); $('pg_'+bi).value=Math.round(c.G); }
       ['s_AB','s_1B','s_2B','s_3B','s_IBB','s_HBP','s_SF'].forEach(function(i){ $(i).value=''; });
       $('s_HR').value=Math.round(c.HR); $('s_BB').value=Math.round(c.BBn);
       // park & league adjustment that reproduces the data's Batting Runs at the original wOBA
@@ -254,8 +257,8 @@
 
   // ---------- init ----------
   build();
-  Promise.all([fetch('hitters-data.json').then(function(r){ if(!r.ok) throw 0; return r.json(); }), fetch('guts.csv').then(function(r){ if(!r.ok) throw 0; return r.text(); })]).then(function(a){
-    parseGuts(a[1]); load(a[0]);
+  Promise.all([fetch('hitters-data.json').then(function(r){ if(!r.ok) throw 0; return r.json(); }), fetch('guts.csv').then(function(r){ if(!r.ok) throw 0; return r.text(); }), fetch('positions.json').then(function(r){ return r.ok?r.json():{}; }).catch(function(){ return {}; })]).then(function(a){
+    parseGuts(a[1]); PD=a[2]||{}; load(a[0]);
     seasonOptions($('gutsYear'),GYEARS,GYEARS[0]);
     $('status').textContent='';
     var p=new URLSearchParams(location.search), id=p.get('id'), s=p.get('season');
